@@ -242,38 +242,50 @@
             done:    { background: '#c8e6c9', border: '#2e7d32' }
         };
 
-        // --- DATOS DEL AUTÓMATA (Con descripciones ricas para el hover de nodos) ---
+        // --- DATOS DEL AUTÓMATA (Coordenadas reestructuradas para un flujo puro Izquierda -> Derecha) ---
         var nodesArray = [
-            { id: 'INICIO', label: 'ESTADO INICIAL', shape: 'circle', color: colors.control, x: -7000, y: 500, font: {size: 35, bold: true}, size: 70, desc: 'Punto de partida del analizador léxico. Consume espacios en blanco y espera el primer carácter válido para clasificar el token.' },
-            { id: 'HECHO', label: 'ESTADO DE ACEPTACIÓN\n(Token Listo)', shape: 'doubleCircle', color: colors.done, x: 2000, y: 500, font: { size: 40, bold: true }, borderWidth: 6, size: 90, desc: 'Estado final. Indica que el token actual se ha reconocido exitosamente. El lexema se empaqueta y se envía al parser (Analizador Sintáctico).' },
-            
-            // Anillo Principal
-            { id: 'CUERPO_CADENA', label: 'Cuerpo de Cadena', shape: 'ellipse', color: colors.text, x: -2000, y: -2800, desc: 'Acumulando caracteres dentro de una cadena de texto (String). Permanece aquí hasta encontrar la comilla de cierre o un carácter de escape.' },
-            { id: 'CUERPO_CARACTER', label: 'Carácter Interno', shape: 'ellipse', color: colors.text, x: -1500, y: -2300, desc: 'Ha leído un único carácter dentro de comillas simples. Espera inmediatamente la comilla simple de cierre.' },
-            { id: 'IDENTIFICADOR', label: 'Identificador Principal', shape: 'ellipse', color: colors.id, x: -1000, y: -1800, desc: 'Procesando una palabra. Acumula letras, números o guiones bajos. Usado para variables, funciones o palabras reservadas del lenguaje.' },
-            { id: 'NUMERO_ENTERO', label: 'Número Entero', shape: 'ellipse', color: colors.num, x: -600, y: -1300, desc: 'Acumulando la parte entera de una constante numérica. Si lee un punto, transita a número flotante.' },
-            { id: 'NUMERO_FLOTANTE', label: 'Número Flotante', shape: 'ellipse', color: colors.num, x: -300, y: -800, desc: 'Acumulando la parte fraccionaria (decimales) de un número.' },
-            { id: 'LETRA_EXPONENTE', label: 'Letra Exponente', shape: 'ellipse', color: colors.num, x: -100, y: -300, desc: 'Ha detectado la letra \'e\' o \'E\' para notación científica. Espera el signo o el valor del exponente.' },
-            { id: 'SIGNO_EXPONENTE', label: 'Signo Exponente', shape: 'ellipse', color: colors.num, x: 0, y: 200, desc: 'Ha detectado un signo (+ o -) en la notación científica. Espera obligatoriamente dígitos numéricos.' },
-            { id: 'OP_RELACIONAL_PARCIAL', label: 'Operador Relacional\nSimple', shape: 'ellipse', color: colors.op, x: -100, y: 700, desc: 'Leyó un símbolo <, >, = o !. Si el siguiente carácter NO es un igual (=), el token se acepta como operador simple.' },
-            { id: 'OP_RELACIONAL_DOBLE', label: 'Operador Relacional\nDoble', shape: 'ellipse', color: colors.op, x: -300, y: 1200, desc: 'Reconoció un operador relacional de dos caracteres, como <=, >=, == o !=.' },
-            { id: 'OP_ARITMETICO', label: 'Operador Aritmético', shape: 'ellipse', color: colors.op, x: -600, y: 1700, desc: 'Reconoció un operador matemático elemental (+, -, *, %). Listo para aceptación inmediata.' },
-            { id: 'SIMBOLO_UNICO', label: 'Símbolo Puntuación', shape: 'ellipse', color: colors.sym, x: -1000, y: 2200, desc: 'Símbolos de agrupación o terminación de sentencias, como llaves, corchetes, paréntesis, comas o puntos y comas.' },
-            { id: 'DIAGONAL_INICIAL', label: 'Primera Diagonal', shape: 'ellipse', color: colors.comment, x: -1500, y: 2700, desc: 'Leyó una barra inclinada (/). Verifica el siguiente carácter para saber si es una división, o el inicio de un comentario.' },
-            { id: 'COMENTARIO_LINEA', label: 'Comentario de Línea', shape: 'ellipse', color: colors.comment, x: -2000, y: 3200, desc: 'Dentro de un comentario simple (//). Ignora todo el texto hasta que detecte el salto de línea (\\n).' },
-            { id: 'ASTERISCO_CIERRE', label: 'Asterisco Cierre', shape: 'ellipse', color: colors.comment, x: -2500, y: 3700, desc: 'Detectó un asterisco dentro de un comentario multilínea. Verifica si el siguiente carácter es la diagonal de cierre (*/).' },
+            // CONTROL: Inicio y Fin
+            { id: 'INICIO', label: 'ESTADO INICIAL', shape: 'circle', color: colors.control, x: -3500, y: 0, font: {size: 35, bold: true}, size: 70, desc: 'Punto de partida del analizador léxico. Consume espacios en blanco y espera el primer carácter válido para clasificar el token.' },
+            { id: 'HECHO', label: 'ESTADO DE ACEPTACIÓN\n(Token Listo)', shape: 'doubleCircle', color: colors.done, x: 3500, y: 0, font: { size: 40, bold: true }, borderWidth: 6, size: 90, desc: 'Estado final. Indica que el token actual se ha reconocido exitosamente. El lexema se empaqueta y se envía al parser (Analizador Sintáctico).' },
+            { id: 'ERROR_LEXICO', label: 'ERROR LÉXICO\n(Inválido)', shape: 'ellipse', color: colors.error, x: 3500, y: -1500, font: {size: 30}, desc: 'El autómata leyó un carácter que rompe las reglas léxicas del lenguaje. Requiere rutina de recuperación de pánico.' },
+            { id: 'FIN_ARCHIVO', label: 'ERROR: FIN DE ARCHIVO', shape: 'ellipse', color: colors.error, x: 3500, y: 1500, font: {size: 30}, desc: 'El código fuente terminó abruptamente mientras el analizador esperaba cerrar una cadena o comentario.' },
 
-            // Precursores y Error
-            { id: 'INICIO_CADENA', label: 'Abre Comillas Dobles', shape: 'ellipse', color: colors.text, x: -4000, y: -2800, desc: 'Detectó la comilla de apertura ("). Prepara el buffer para capturar el texto.' },
-            { id: 'ESCAPE_CADENA', label: 'Carácter Escape', shape: 'ellipse', color: colors.text, x: -2000, y: -3300, desc: 'Leyó un carácter de escape (\\). El siguiente carácter será inyectado literalmente en la cadena (ej. \\n, \\t, \\").' },
-            { id: 'INICIO_CARACTER', label: 'Abre Comilla Simple', shape: 'ellipse', color: colors.text, x: -3500, y: -2300, desc: 'Detectó la comilla simple de apertura (\'). Espera capturar un solo carácter.' },
-            { id: 'PUNTO_DECIMAL', label: 'Punto Decimal', shape: 'ellipse', color: colors.num, x: -1500, y: -1050, desc: 'Detectó un punto después de un entero. Requiere obligatoriamente un dígito numérico a continuación.' },
-            { id: 'COMENTARIO_BLOQUE', label: 'Comentario Multilínea', shape: 'ellipse', color: colors.comment, x: -3500, y: 3700, desc: 'Dentro de un bloque de comentarios (/*). Ignorará todo, incluyendo saltos de línea, hasta encontrar la secuencia de cierre (*/).' },
-            { id: 'ERROR_LEXICO', label: 'ERROR LÉXICO\n(Inválido)', shape: 'ellipse', color: colors.error, x: 2000, y: -2500, font: {size: 30}, desc: 'El autómata leyó un carácter que rompe las reglas léxicas del lenguaje. Requiere rutina de recuperación de pánico.' },
-            { id: 'FIN_ARCHIVO', label: 'ERROR: FIN DE ARCHIVO', shape: 'ellipse', color: colors.error, x: 2000, y: -1800, font: {size: 30}, desc: 'El código fuente terminó abruptamente mientras el analizador esperaba cerrar una cadena o comentario.' }
+            // RAMA: Cadenas (String)
+            { id: 'INICIO_CADENA', label: 'Abre Comillas Dobles', shape: 'ellipse', color: colors.text, x: -1500, y: -1800, desc: 'Detectó la comilla de apertura ("). Prepara el buffer para capturar el texto.' },
+            { id: 'CUERPO_CADENA', label: 'Cuerpo de Cadena', shape: 'ellipse', color: colors.text, x: -500, y: -1800, desc: 'Acumulando caracteres dentro de una cadena de texto (String). Permanece aquí hasta encontrar la comilla de cierre o un carácter de escape.' },
+            { id: 'ESCAPE_CADENA', label: 'Carácter Escape', shape: 'ellipse', color: colors.text, x: -500, y: -2300, desc: 'Leyó un carácter de escape (\\). El siguiente carácter será inyectado literalmente en la cadena (ej. \\n, \\t, \\").' },
+
+            // RAMA: Caracteres (Char)
+            { id: 'INICIO_CARACTER', label: 'Abre Comilla Simple', shape: 'ellipse', color: colors.text, x: -1500, y: -1200, desc: 'Detectó la comilla simple de apertura (\'). Espera capturar un solo carácter.' },
+            { id: 'CUERPO_CARACTER', label: 'Carácter Interno', shape: 'ellipse', color: colors.text, x: -500, y: -1200, desc: 'Ha leído un único carácter dentro de comillas simples. Espera inmediatamente la comilla simple de cierre.' },
+
+            // RAMA: Números (Flujo central rectificado)
+            { id: 'NUMERO_ENTERO', label: 'Número Entero', shape: 'ellipse', color: colors.num, x: -1500, y: -600, desc: 'Acumulando la parte entera de una constante numérica. Si lee un punto, transita a número flotante.' },
+            { id: 'PUNTO_DECIMAL', label: 'Punto Decimal', shape: 'ellipse', color: colors.num, x: -500, y: -600, desc: 'Detectó un punto después de un entero. Requiere obligatoriamente un dígito numérico a continuación.' },
+            { id: 'NUMERO_FLOTANTE', label: 'Número Flotante', shape: 'ellipse', color: colors.num, x: 500, y: -600, desc: 'Acumulando la parte fraccionaria (decimales) de un número.' },
+            { id: 'LETRA_EXPONENTE', label: 'Letra Exponente', shape: 'ellipse', color: colors.num, x: 1500, y: -600, desc: 'Ha detectado la letra \'e\' o \'E\' para notación científica. Espera el signo o el valor del exponente.' },
+            { id: 'SIGNO_EXPONENTE', label: 'Signo Exponente', shape: 'ellipse', color: colors.num, x: 2500, y: -600, desc: 'Ha detectado un signo (+ o -) en la notación científica. Espera obligatoriamente dígitos numéricos.' },
+
+            // RAMA: Identificadores
+            { id: 'IDENTIFICADOR', label: 'Identificador Principal', shape: 'ellipse', color: colors.id, x: -1500, y: 0, desc: 'Procesando una palabra. Acumula letras, números o guiones bajos. Usado para variables, funciones o palabras reservadas del lenguaje.' },
+
+            // RAMA: Operadores Relacionales
+            { id: 'OP_RELACIONAL_PARCIAL', label: 'Operador Relacional\nSimple', shape: 'ellipse', color: colors.op, x: -1500, y: 600, desc: 'Leyó un símbolo <, >, = o !. Si el siguiente carácter NO es un igual (=), el token se acepta como operador simple.' },
+            { id: 'OP_RELACIONAL_DOBLE', label: 'Operador Relacional\nDoble', shape: 'ellipse', color: colors.op, x: -500, y: 600, desc: 'Reconoció un operador relacional de dos caracteres, como <=, >=, == o !=.' },
+
+            // RAMA: Operadores Aritméticos y Símbolos
+            { id: 'OP_ARITMETICO', label: 'Operador Aritmético', shape: 'ellipse', color: colors.op, x: -1500, y: 1200, desc: 'Reconoció un operador matemático elemental (+, -, *, %). Listo para aceptación inmediata.' },
+            { id: 'SIMBOLO_UNICO', label: 'Símbolo Puntuación', shape: 'ellipse', color: colors.sym, x: -1500, y: 1800, desc: 'Símbolos de agrupación o terminación de sentencias, como llaves, corchetes, paréntesis, comas o puntos y comas.' },
+
+            // RAMA: Comentarios
+            { id: 'DIAGONAL_INICIAL', label: 'Primera Diagonal', shape: 'ellipse', color: colors.comment, x: -1500, y: 2600, desc: 'Leyó una barra inclinada (/). Verifica el siguiente carácter para saber si es una división, o el inicio de un comentario.' },
+            { id: 'COMENTARIO_LINEA', label: 'Comentario de Línea', shape: 'ellipse', color: colors.comment, x: -500, y: 2300, desc: 'Dentro de un comentario simple (//). Ignora todo el texto hasta que detecte el salto de línea (\\n).' },
+            { id: 'COMENTARIO_BLOQUE', label: 'Comentario Multilínea', shape: 'ellipse', color: colors.comment, x: -500, y: 2900, desc: 'Dentro de un bloque de comentarios (/*). Ignorará todo, incluyendo saltos de línea, hasta encontrar la secuencia de cierre (*/).' },
+            { id: 'ASTERISCO_CIERRE', label: 'Asterisco Cierre', shape: 'ellipse', color: colors.comment, x: 500, y: 2900, desc: 'Detectó un asterisco dentro de un comentario multilínea. Verifica si el siguiente carácter es la diagonal de cierre (*/).' }
         ];
 
         var edgesArray = [
+            // Transiciones desde Inicio
             { from: 'INICIO', to: 'INICIO', label: 'Espacio / Tabulación / Salto', arrows: 'to', selfReference: { size: 90, angle: Math.PI } },
             { from: 'INICIO', to: 'INICIO_CADENA', label: 'Comillas Dobles ( " )', arrows: 'to' },
             { from: 'INICIO', to: 'INICIO_CARACTER', label: 'Comilla Simple ( \' )', arrows: 'to' },
@@ -284,16 +296,20 @@
             { from: 'INICIO', to: 'SIMBOLO_UNICO', label: 'Puntuación: ( ) [ ] { } ; ,', arrows: 'to' },
             { from: 'INICIO', to: 'DIAGONAL_INICIAL', label: 'Diagonal ( / )', arrows: 'to' },
             
+            // Transiciones de Cadenas
             { from: 'INICIO_CADENA', to: 'CUERPO_CADENA', label: 'Cualquier carácter', arrows: 'to' },
             { from: 'CUERPO_CADENA', to: 'CUERPO_CADENA', label: 'Cualquier carácter', arrows: 'to', selfReference: { size: 60, angle: -Math.PI/2 } },
             { from: 'CUERPO_CADENA', to: 'ESCAPE_CADENA', label: 'Diagonal Inversa ( \\ )', arrows: 'to' },
             { from: 'ESCAPE_CADENA', to: 'CUERPO_CADENA', label: 'Cualquier carácter', arrows: 'to' },
             { from: 'CUERPO_CADENA', to: 'FIN_ARCHIVO', label: 'Fin de Archivo Temprano', arrows: 'to', font: {color: '#c62828'} },
             
+            // Transiciones de Caracteres
             { from: 'INICIO_CARACTER', to: 'CUERPO_CARACTER', label: 'Cualquier carácter único', arrows: 'to' },
             
+            // Transiciones de Identificadores
             { from: 'IDENTIFICADOR', to: 'IDENTIFICADOR', label: 'Letra / Dígito / Guion Bajo', arrows: 'to', selfReference: { size: 60, angle: -Math.PI/2 } },
             
+            // Transiciones de Números
             { from: 'NUMERO_ENTERO', to: 'NUMERO_ENTERO', label: 'Dígito Numérico', arrows: 'to', selfReference: { size: 60, angle: -Math.PI/2 } },
             { from: 'NUMERO_ENTERO', to: 'PUNTO_DECIMAL', label: 'Punto ( . )', arrows: 'to' },
             { from: 'PUNTO_DECIMAL', to: 'NUMERO_FLOTANTE', label: 'Dígito Numérico', arrows: 'to' },
@@ -302,8 +318,10 @@
             { from: 'NUMERO_FLOTANTE', to: 'LETRA_EXPONENTE', label: 'Letras: e | E', arrows: 'to' },
             { from: 'LETRA_EXPONENTE', to: 'SIGNO_EXPONENTE', label: 'Signos: + | -', arrows: 'to' },
             
+            // Transiciones de Relacionales
             { from: 'OP_RELACIONAL_PARCIAL', to: 'OP_RELACIONAL_DOBLE', label: 'Signo Igual ( = )', arrows: 'to' },
             
+            // Transiciones de Comentarios
             { from: 'DIAGONAL_INICIAL', to: 'COMENTARIO_LINEA', label: 'Segunda Diagonal ( / )', arrows: 'to' },
             { from: 'COMENTARIO_LINEA', to: 'COMENTARIO_LINEA', label: 'Cualquier texto', arrows: 'to', selfReference: { size: 60, angle: Math.PI/2 } },
             { from: 'DIAGONAL_INICIAL', to: 'COMENTARIO_BLOQUE', label: 'Asterisco ( * )', arrows: 'to' },
@@ -311,6 +329,7 @@
             { from: 'COMENTARIO_BLOQUE', to: 'ASTERISCO_CIERRE', label: 'Asterisco ( * )', arrows: 'to' },
             { from: 'ASTERISCO_CIERRE', to: 'COMENTARIO_BLOQUE', label: 'Cualquier letra que no sea diagonal', arrows: 'to' },
             
+            // Errores
             { from: 'PUNTO_DECIMAL', to: 'ERROR_LEXICO', label: 'No es un dígito', arrows: 'to', font: {color: '#c62828'} },
             
             // Líneas de Aceptación a HECHO
@@ -334,15 +353,14 @@
         var edges = new vis.DataSet(edgesArray);
         var container = document.getElementById('automata-network');
         
-        // --- CONFIGURACIÓN OPTIMIZADA PARA DETECCIÓN TEMPRANA ---
         var options = {
             physics: false, 
             interaction: {
                 hover: true, 
-                hoverConnectedEdges: false, // Desactivar para no saturar al pasar por nodos
+                hoverConnectedEdges: false,
                 zoomView: true,
                 navigationButtons: true,
-                tooltipDelay: 10 // Detección instantánea
+                tooltipDelay: 10
             },
             nodes: {
                 borderWidth: 3,
@@ -353,8 +371,8 @@
                 color: { color: '#444', highlight: '#C70039', hover: '#C70039' },
                 font: { align: 'middle', size: 20, background: 'rgba(255,255,255,1)', strokeWidth: 0, bold: true },
                 arrows: { to: { scaleFactor: 1.5 } },
-                width: 6, // EL SECRETO: Una línea base mucho más gruesa
-                hoverWidth: 6, // Al pasar el mouse, el hitbox suma 6px extra, haciéndolo casi magnético.
+                width: 6,
+                hoverWidth: 6,
                 selectionWidth: 4
             }
         };
@@ -384,12 +402,10 @@
             var fromNode = nodes.get(edgeData.from);
             var toNode = nodes.get(edgeData.to);
 
-            // Configurar Layout para Flechas
             hudTitulo.innerText = "🔍 Inspección de Transición (Flecha)";
             containerTransicion.style.display = 'flex';
             containerEstado.style.display = 'none';
 
-            // Poblar Datos
             hudOrigen.innerText = limpiarTexto(fromNode.label);
             hudCondicion.innerText = limpiarTexto(edgeData.label) || 'Bucle Automático';
             hudDestino.innerText = limpiarTexto(toNode.label);
@@ -409,12 +425,10 @@
             var nodeData = nodes.get(params.node);
             if(!nodeData) return;
 
-            // Configurar Layout para Nodos
             hudTitulo.innerText = "🎯 Inspección de Estado (Nodo)";
             containerTransicion.style.display = 'none';
             containerEstado.style.display = 'flex';
 
-            // Poblar Datos
             hudEstadoNombre.innerText = limpiarTexto(nodeData.label);
             hudEstadoDesc.innerText = nodeData.desc || 'Estado intermedio genérico del autómata.';
 
