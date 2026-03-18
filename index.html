@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Autómata Léxico - Navegación con Lupa Inteligente</title>
+    <title>Autómata Léxico - Modo Revisión Docente</title>
     <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
     <style>
         :root {
             --bg-primary: #ffffff;
             --text-primary: #333;
             --accent-primary: #0056b3;
+            --accent-success: #2e7d32;
             --font-sans: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
         }
         
@@ -30,63 +31,92 @@
             background: radial-gradient(circle at center, #f8f9fa 0%, #e9ecef 100%);
         }
 
-        /* --- ESTILOS PARA LA LEYENDA --- */
+        /* --- LEYENDA (Movida abajo a la izquierda para no estorbar al HUD) --- */
         .leyenda-container {
             position: absolute;
-            top: 20px;
-            left: 20px;
-            background: rgba(255, 255, 255, 0.98);
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-            border: 1px solid #e0e0e0;
-            z-index: 10;
-            font-size: 13px;
-            min-width: 200px;
-        }
-        .leyenda-container h3 { margin: 0 0 15px 0; font-size: 16px; color: var(--accent-primary); border-bottom: 2px solid #eee; padding-bottom: 10px; }
-        .leyenda-item { display: flex; align-items: center; margin-bottom: 10px; }
-        .color-box { width: 20px; height: 20px; border-radius: 5px; margin-right: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border: 1px solid rgba(0,0,0,0.1); }
-
-        /* --- ESTILOS PARA LA LUPA (MINI AUTÓMATA) --- */
-        #tooltip-container {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            width: 350px;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            border: 2px solid var(--accent-primary);
-            z-index: 100;
-            display: none; /* Oculto por defecto */
-            flex-direction: column;
-            overflow: hidden;
-            transition: opacity 0.2s;
-        }
-
-        .tooltip-header {
-            background-color: var(--accent-primary);
-            color: white;
-            padding: 10px 15px;
-            font-weight: bold;
-            font-size: 14px;
-        }
-
-        #tooltip-network {
-            width: 100%;
-            height: 200px; 
-        }
-
-        .tooltip-info {
+            bottom: 30px;
+            left: 30px;
+            background: rgba(255, 255, 255, 0.95);
             padding: 15px;
-            font-size: 13px;
-            border-top: 1px solid #eee;
-            background: #f8f9fa;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            border: 2px solid #e0e0e0;
+            z-index: 10;
+            font-size: 14px;
+            min-width: 220px;
         }
-        
-        .tooltip-info strong { color: var(--accent-primary); }
-        .tooltip-arrow { color: #888; margin: 0 5px; }
+        .leyenda-container h3 { margin: 0 0 10px 0; font-size: 16px; color: var(--accent-primary); border-bottom: 2px solid #eee; padding-bottom: 8px; }
+        .leyenda-item { display: flex; align-items: center; margin-bottom: 8px; font-weight: 500;}
+        .color-box { width: 22px; height: 22px; border-radius: 6px; margin-right: 12px; border: 2px solid rgba(0,0,0,0.2); }
+
+        /* --- HUD DE INSPECCIÓN GIGANTE (LA LUPA) --- */
+        #hud-revision {
+            position: absolute;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.98);
+            padding: 20px 40px;
+            border-radius: 16px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.2);
+            border: 4px solid var(--accent-primary);
+            z-index: 1000;
+            display: none; /* Se muestra al hacer hover */
+            text-align: center;
+            min-width: 600px;
+            pointer-events: none; /* Para que no estorbe al mouse */
+            animation: popIn 0.2s ease-out;
+        }
+
+        @keyframes popIn {
+            from { opacity: 0; transform: translate(-50%, -20px) scale(0.95); }
+            to { opacity: 1; transform: translate(-50%, 0) scale(1); }
+        }
+
+        .hud-titulo {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #666;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .hud-transicion {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            font-size: 22px;
+        }
+
+        .hud-nodo {
+            background: #f1f3f5;
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: 2px solid #ced4da;
+            font-weight: bold;
+            color: #212529;
+            max-width: 300px;
+        }
+
+        .hud-flecha {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: var(--accent-primary);
+            font-weight: 900;
+        }
+
+        .hud-condicion {
+            background: var(--accent-primary);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 20px;
+            margin-bottom: 5px;
+            box-shadow: 0 4px 10px rgba(0,86,179,0.3);
+        }
 
         /* --- CONTROLES --- */
         .controls {
@@ -94,50 +124,73 @@
             bottom: 30px;
             right: 30px;
             z-index: 10;
-            display: flex;
-            gap: 10px;
         }
         .btn {
             background-color: var(--accent-primary);
             color: white;
             border: none;
-            padding: 12px 24px;
+            padding: 15px 30px;
+            font-size: 16px;
             border-radius: 30px;
             cursor: pointer;
             font-weight: bold;
-            box-shadow: 0 4px 15px rgba(0,86,179,0.3);
+            box-shadow: 0 6px 20px rgba(0,86,179,0.3);
             transition: all 0.3s;
         }
         .btn:hover { transform: translateY(-3px); background-color: #004494; }
+        
+        /* Instrucción persistente superior */
+        .instruccion-top {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: #fff3cd;
+            color: #856404;
+            border: 2px solid #ffeeba;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 16px;
+            z-index: 5;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
     </style>
 </head>
 <body>
 
-    <div class="leyenda-container">
-        <h3>Leyenda de Categorías</h3>
-        <div class="leyenda-item"><span class="color-box" style="background:#eceff1;"></span>Control y Flujo</div>
-        <div class="leyenda-item"><span class="color-box" style="background:#e3f2fd;"></span>Identificadores</div>
-        <div class="leyenda-item"><span class="color-box" style="background:#fff3e0;"></span>Constantes Numéricas</div>
-        <div class="leyenda-item"><span class="color-box" style="background:#fbe9e7;"></span>Operadores</div>
-        <div class="leyenda-item"><span class="color-box" style="background:#f3e5f5;"></span>Cadenas y Caracteres</div>
-        <div class="leyenda-item"><span class="color-box" style="background:#e8f5e9;"></span>Comentarios</div>
-        <div class="leyenda-item"><span class="color-box" style="background:#e0f2f1;"></span>Símbolos de Puntuación</div>
-        <div class="leyenda-item"><span class="color-box" style="background:#ffebee;"></span>Errores Léxicos</div>
-        <div class="leyenda-item"><span class="color-box" style="background:#c8e6c9; border: 2px solid #2e7d32;"></span>Estado de Aceptación</div>
+    <div class="instruccion-top" id="instruccion">
+        👉 Pasa el mouse sobre cualquier flecha para ver el detalle de la transición.
     </div>
 
-    <div id="tooltip-container">
-        <div class="tooltip-header">🔍 Transición Seleccionada</div>
-        <div id="tooltip-network"></div>
-        <div class="tooltip-info">
-            <div id="info-text">Pasa el mouse sobre una flecha para ver el detalle.</div>
+    <div id="hud-revision">
+        <div class="hud-titulo">Inspección de Transición Léxica</div>
+        <div class="hud-transicion">
+            <div class="hud-nodo" id="hud-origen">ESTADO A</div>
+            <div class="hud-flecha">
+                <div class="hud-condicion" id="hud-condicion">CONDICIÓN</div>
+                <div style="font-size: 30px; line-height: 0.5;">⟶</div>
+            </div>
+            <div class="hud-nodo" id="hud-destino">ESTADO B</div>
         </div>
+    </div>
+
+    <div class="leyenda-container">
+        <h3>Categorías Léxicas</h3>
+        <div class="leyenda-item"><span class="color-box" style="background:#eceff1; border-color: #90a4ae;"></span>Control / Inicio</div>
+        <div class="leyenda-item"><span class="color-box" style="background:#e3f2fd; border-color: #42a5f5;"></span>Identificadores</div>
+        <div class="leyenda-item"><span class="color-box" style="background:#fff3e0; border-color: #fb8c00;"></span>Números</div>
+        <div class="leyenda-item"><span class="color-box" style="background:#fbe9e7; border-color: #ff7043;"></span>Operadores</div>
+        <div class="leyenda-item"><span class="color-box" style="background:#f3e5f5; border-color: #ab47bc;"></span>Cadenas / Char</div>
+        <div class="leyenda-item"><span class="color-box" style="background:#e8f5e9; border-color: #4caf50;"></span>Comentarios</div>
+        <div class="leyenda-item"><span class="color-box" style="background:#e0f2f1; border-color: #26a69a;"></span>Puntuación</div>
+        <div class="leyenda-item"><span class="color-box" style="background:#ffebee; border-color: #ef5350;"></span>Errores</div>
+        <div class="leyenda-item"><span class="color-box" style="background:#c8e6c9; border-color: var(--accent-success);"></span>Aceptación Final</div>
     </div>
 
     <div id="automata-network"></div>
     
     <div class="controls">
-        <button class="btn" onclick="network.fit({ animation: {duration: 800} })">✨ Reajustar Vista</button>
+        <button class="btn" onclick="network.fit({ animation: {duration: 800} })">🔍 Centrar Grafo Completo</button>
     </div>
 
     <script type="text/javascript">
@@ -153,95 +206,99 @@
             done:    { background: '#c8e6c9', border: '#2e7d32' }
         };
 
+        // --- DATOS DEL AUTÓMATA (Textos más claros y amigables) ---
         var nodesArray = [
-            { id: 'INICIO', label: 'ESTADO INICIAL', shape: 'circle', color: colors.control, x: -7000, y: 500, font: {size: 30, bold: true}, size: 60 },
-            { id: 'HECHO', label: 'ESTADO DE ACEPTACIÓN\n(Token Finalizado)', shape: 'doubleCircle', color: colors.done, x: 2000, y: 500, font: { size: 30, bold: true }, borderWidth: 5, size: 80 },
+            { id: 'INICIO', label: 'ESTADO INICIAL', shape: 'circle', color: colors.control, x: -7000, y: 500, font: {size: 35, bold: true}, size: 70 },
+            { id: 'HECHO', label: 'ESTADO DE ACEPTACIÓN\n(Token Listo)', shape: 'doubleCircle', color: colors.done, x: 2000, y: 500, font: { size: 40, bold: true }, borderWidth: 6, size: 90 },
             
             // Anillo Principal
-            { id: 'CUERPO_CADENA', label: 'Texto de Cadena', shape: 'ellipse', color: colors.text, x: -2000, y: -2800 },
+            { id: 'CUERPO_CADENA', label: 'Cuerpo de Cadena', shape: 'ellipse', color: colors.text, x: -2000, y: -2800 },
             { id: 'CUERPO_CARACTER', label: 'Carácter Interno', shape: 'ellipse', color: colors.text, x: -1500, y: -2300 },
             { id: 'IDENTIFICADOR', label: 'Identificador Principal', shape: 'ellipse', color: colors.id, x: -1000, y: -1800 },
             { id: 'NUMERO_ENTERO', label: 'Número Entero', shape: 'ellipse', color: colors.num, x: -600, y: -1300 },
             { id: 'NUMERO_FLOTANTE', label: 'Número Flotante', shape: 'ellipse', color: colors.num, x: -300, y: -800 },
-            { id: 'LETRA_EXPONENTE', label: 'Letra de Exponente', shape: 'ellipse', color: colors.num, x: -100, y: -300 },
-            { id: 'SIGNO_EXPONENTE', label: 'Signo de Exponente', shape: 'ellipse', color: colors.num, x: 0, y: 200 },
-            { id: 'OP_RELACIONAL_PARCIAL', label: 'Op. Relacional Parcial', shape: 'ellipse', color: colors.op, x: -100, y: 700 },
-            { id: 'OP_RELACIONAL_DOBLE', label: 'Op. Relacional Doble', shape: 'ellipse', color: colors.op, x: -300, y: 1200 },
+            { id: 'LETRA_EXPONENTE', label: 'Letra Exponente', shape: 'ellipse', color: colors.num, x: -100, y: -300 },
+            { id: 'SIGNO_EXPONENTE', label: 'Signo Exponente', shape: 'ellipse', color: colors.num, x: 0, y: 200 },
+            { id: 'OP_RELACIONAL_PARCIAL', label: 'Operador Relacional\nSimple', shape: 'ellipse', color: colors.op, x: -100, y: 700 },
+            { id: 'OP_RELACIONAL_DOBLE', label: 'Operador Relacional\nDoble', shape: 'ellipse', color: colors.op, x: -300, y: 1200 },
             { id: 'OP_ARITMETICO', label: 'Operador Aritmético', shape: 'ellipse', color: colors.op, x: -600, y: 1700 },
-            { id: 'SIMBOLO_UNICO', label: 'Símbolo de Puntuación', shape: 'ellipse', color: colors.sym, x: -1000, y: 2200 },
+            { id: 'SIMBOLO_UNICO', label: 'Símbolo Puntuación', shape: 'ellipse', color: colors.sym, x: -1000, y: 2200 },
             { id: 'DIAGONAL_INICIAL', label: 'Primera Diagonal', shape: 'ellipse', color: colors.comment, x: -1500, y: 2700 },
             { id: 'COMENTARIO_LINEA', label: 'Comentario de Línea', shape: 'ellipse', color: colors.comment, x: -2000, y: 3200 },
-            { id: 'ASTERISCO_CIERRE', label: 'Asterisco de Cierre', shape: 'ellipse', color: colors.comment, x: -2500, y: 3700 },
+            { id: 'ASTERISCO_CIERRE', label: 'Asterisco Cierre', shape: 'ellipse', color: colors.comment, x: -2500, y: 3700 },
 
             // Precursores y Error
-            { id: 'INICIO_CADENA', label: 'Apertura Comillas Dobles', shape: 'ellipse', color: colors.text, x: -4000, y: -2800 },
-            { id: 'ESCAPE_CADENA', label: 'Carácter de Escape', shape: 'ellipse', color: colors.text, x: -2000, y: -3300 },
-            { id: 'INICIO_CARACTER', label: 'Apertura Comilla Simple', shape: 'ellipse', color: colors.text, x: -3500, y: -2300 },
+            { id: 'INICIO_CADENA', label: 'Abre Comillas Dobles', shape: 'ellipse', color: colors.text, x: -4000, y: -2800 },
+            { id: 'ESCAPE_CADENA', label: 'Carácter Escape', shape: 'ellipse', color: colors.text, x: -2000, y: -3300 },
+            { id: 'INICIO_CARACTER', label: 'Abre Comilla Simple', shape: 'ellipse', color: colors.text, x: -3500, y: -2300 },
             { id: 'PUNTO_DECIMAL', label: 'Punto Decimal', shape: 'ellipse', color: colors.num, x: -1500, y: -1050 },
-            { id: 'COMENTARIO_BLOQUE', label: 'Cuerpo Comentario Multilínea', shape: 'ellipse', color: colors.comment, x: -3500, y: 3700 },
-            { id: 'ERROR_LEXICO', label: 'ERROR LÉXICO', shape: 'ellipse', color: colors.error, x: 2000, y: -2500, font: {size: 25} },
-            { id: 'FIN_ARCHIVO', label: 'FIN DE ARCHIVO INESPERADO', shape: 'ellipse', color: colors.error, x: 2000, y: -1800, font: {size: 25} }
+            { id: 'COMENTARIO_BLOQUE', label: 'Comentario Multilínea', shape: 'ellipse', color: colors.comment, x: -3500, y: 3700 },
+            { id: 'ERROR_LEXICO', label: 'ERROR LÉXICO\n(Inválido)', shape: 'ellipse', color: colors.error, x: 2000, y: -2500, font: {size: 30} },
+            { id: 'FIN_ARCHIVO', label: 'ERROR: FIN DE ARCHIVO', shape: 'ellipse', color: colors.error, x: 2000, y: -1800, font: {size: 30} }
         ];
 
         var edgesArray = [
-            { from: 'INICIO', to: 'INICIO', label: 'Espacio en blanco', arrows: 'to', selfReference: { size: 80, angle: Math.PI } },
+            { from: 'INICIO', to: 'INICIO', label: 'Espacio / Tabulación / Salto', arrows: 'to', selfReference: { size: 90, angle: Math.PI } },
+            
             { from: 'INICIO', to: 'INICIO_CADENA', label: 'Comillas Dobles ( " )', arrows: 'to' },
             { from: 'INICIO', to: 'INICIO_CARACTER', label: 'Comilla Simple ( \' )', arrows: 'to' },
-            { from: 'INICIO', to: 'IDENTIFICADOR', label: 'Letra / _', arrows: 'to' },
+            { from: 'INICIO', to: 'IDENTIFICADOR', label: 'Letra o Guion Bajo ( _ )', arrows: 'to' },
             { from: 'INICIO', to: 'NUMERO_ENTERO', label: 'Dígito Numérico', arrows: 'to' },
-            { from: 'INICIO', to: 'OP_RELACIONAL_PARCIAL', label: '< > = !', arrows: 'to' },
-            { from: 'INICIO', to: 'OP_ARITMETICO', label: '+ - * %', arrows: 'to' },
-            { from: 'INICIO', to: 'SIMBOLO_UNICO', label: '( ) [ ] { } ; ,', arrows: 'to' },
+            { from: 'INICIO', to: 'OP_RELACIONAL_PARCIAL', label: 'Símbolos: < > = !', arrows: 'to' },
+            { from: 'INICIO', to: 'OP_ARITMETICO', label: 'Símbolos: + - * %', arrows: 'to' },
+            { from: 'INICIO', to: 'SIMBOLO_UNICO', label: 'Puntuación: ( ) [ ] { } ; ,', arrows: 'to' },
             { from: 'INICIO', to: 'DIAGONAL_INICIAL', label: 'Diagonal ( / )', arrows: 'to' },
             
             { from: 'INICIO_CADENA', to: 'CUERPO_CADENA', label: 'Cualquier carácter', arrows: 'to' },
-            { from: 'CUERPO_CADENA', to: 'CUERPO_CADENA', label: 'Continúa texto', arrows: 'to', selfReference: { size: 50, angle: -Math.PI/2 } },
-            { from: 'CUERPO_CADENA', to: 'ESCAPE_CADENA', label: 'Escape ( \\ )', arrows: 'to' },
-            { from: 'ESCAPE_CADENA', to: 'CUERPO_CADENA', label: 'Carácter Escapado', arrows: 'to' },
+            { from: 'CUERPO_CADENA', to: 'CUERPO_CADENA', label: 'Cualquier carácter', arrows: 'to', selfReference: { size: 60, angle: -Math.PI/2 } },
+            { from: 'CUERPO_CADENA', to: 'ESCAPE_CADENA', label: 'Diagonal Inversa ( \\ )', arrows: 'to' },
+            { from: 'ESCAPE_CADENA', to: 'CUERPO_CADENA', label: 'Cualquier carácter', arrows: 'to' },
+            { from: 'CUERPO_CADENA', to: 'FIN_ARCHIVO', label: 'Fin de Archivo Temprano', arrows: 'to', font: {color: '#c62828'} },
             
-            { from: 'INICIO_CARACTER', to: 'CUERPO_CARACTER', label: 'Un carácter', arrows: 'to' },
+            { from: 'INICIO_CARACTER', to: 'CUERPO_CARACTER', label: 'Cualquier carácter único', arrows: 'to' },
             
-            { from: 'IDENTIFICADOR', to: 'IDENTIFICADOR', label: 'Letra/Dígito/_', arrows: 'to', selfReference: { size: 50, angle: -Math.PI/2 } },
+            { from: 'IDENTIFICADOR', to: 'IDENTIFICADOR', label: 'Letra / Dígito / Guion Bajo', arrows: 'to', selfReference: { size: 60, angle: -Math.PI/2 } },
             
-            { from: 'NUMERO_ENTERO', to: 'NUMERO_ENTERO', label: 'Dígito', arrows: 'to', selfReference: { size: 50, angle: -Math.PI/2 } },
+            { from: 'NUMERO_ENTERO', to: 'NUMERO_ENTERO', label: 'Dígito Numérico', arrows: 'to', selfReference: { size: 60, angle: -Math.PI/2 } },
             { from: 'NUMERO_ENTERO', to: 'PUNTO_DECIMAL', label: 'Punto ( . )', arrows: 'to' },
-            { from: 'PUNTO_DECIMAL', to: 'NUMERO_FLOTANTE', label: 'Dígito', arrows: 'to' },
-            { from: 'NUMERO_FLOTANTE', to: 'NUMERO_FLOTANTE', label: 'Dígito', arrows: 'to', selfReference: { size: 50, angle: -Math.PI/2 } },
-            { from: 'NUMERO_ENTERO', to: 'LETRA_EXPONENTE', label: 'e | E', arrows: 'to' },
-            { from: 'NUMERO_FLOTANTE', to: 'LETRA_EXPONENTE', label: 'e | E', arrows: 'to' },
-            { from: 'LETRA_EXPONENTE', to: 'SIGNO_EXPONENTE', label: '+ | -', arrows: 'to' },
+            { from: 'PUNTO_DECIMAL', to: 'NUMERO_FLOTANTE', label: 'Dígito Numérico', arrows: 'to' },
+            { from: 'NUMERO_FLOTANTE', to: 'NUMERO_FLOTANTE', label: 'Dígito Numérico', arrows: 'to', selfReference: { size: 60, angle: -Math.PI/2 } },
+            { from: 'NUMERO_ENTERO', to: 'LETRA_EXPONENTE', label: 'Letras: e | E', arrows: 'to' },
+            { from: 'NUMERO_FLOTANTE', to: 'LETRA_EXPONENTE', label: 'Letras: e | E', arrows: 'to' },
+            { from: 'LETRA_EXPONENTE', to: 'SIGNO_EXPONENTE', label: 'Signos: + | -', arrows: 'to' },
             
             { from: 'OP_RELACIONAL_PARCIAL', to: 'OP_RELACIONAL_DOBLE', label: 'Signo Igual ( = )', arrows: 'to' },
             
-            { from: 'DIAGONAL_INICIAL', to: 'COMENTARIO_LINEA', label: 'Segunda Diagonal', arrows: 'to' },
-            { from: 'COMENTARIO_LINEA', to: 'COMENTARIO_LINEA', label: 'Texto', arrows: 'to', selfReference: { size: 50, angle: Math.PI/2 } },
+            { from: 'DIAGONAL_INICIAL', to: 'COMENTARIO_LINEA', label: 'Segunda Diagonal ( / )', arrows: 'to' },
+            { from: 'COMENTARIO_LINEA', to: 'COMENTARIO_LINEA', label: 'Cualquier texto', arrows: 'to', selfReference: { size: 60, angle: Math.PI/2 } },
             { from: 'DIAGONAL_INICIAL', to: 'COMENTARIO_BLOQUE', label: 'Asterisco ( * )', arrows: 'to' },
-            { from: 'COMENTARIO_BLOQUE', to: 'COMENTARIO_BLOQUE', label: 'Texto', arrows: 'to', selfReference: { size: 50, angle: Math.PI/2 } },
-            { from: 'COMENTARIO_BLOQUE', to: 'ASTERISCO_CIERRE', label: 'Asterisco', arrows: 'to' },
-            { from: 'ASTERISCO_CIERRE', to: 'COMENTARIO_BLOQUE', label: 'No es diagonal', arrows: 'to' },
+            { from: 'COMENTARIO_BLOQUE', to: 'COMENTARIO_BLOQUE', label: 'Cualquier texto', arrows: 'to', selfReference: { size: 60, angle: Math.PI/2 } },
+            { from: 'COMENTARIO_BLOQUE', to: 'ASTERISCO_CIERRE', label: 'Asterisco ( * )', arrows: 'to' },
+            { from: 'ASTERISCO_CIERRE', to: 'COMENTARIO_BLOQUE', label: 'Cualquier letra que no sea diagonal', arrows: 'to' },
             
-            { from: 'PUNTO_DECIMAL', to: 'ERROR_LEXICO', label: 'Carácter inválido', arrows: 'to', font: {color: 'red'} },
+            { from: 'PUNTO_DECIMAL', to: 'ERROR_LEXICO', label: 'No es un dígito', arrows: 'to', font: {color: '#c62828'} },
             
-            { from: 'CUERPO_CADENA', to: 'HECHO', label: 'Comillas Cierre', arrows: 'to' },
-            { from: 'CUERPO_CARACTER', to: 'HECHO', label: 'Comilla Cierre', arrows: 'to' },
-            { from: 'IDENTIFICADOR', to: 'HECHO', label: 'Otro carácter', arrows: 'to' },
-            { from: 'NUMERO_ENTERO', to: 'HECHO', label: 'Otro carácter', arrows: 'to' },
-            { from: 'NUMERO_FLOTANTE', to: 'HECHO', label: 'Otro carácter', arrows: 'to' },
-            { from: 'LETRA_EXPONENTE', to: 'HECHO', label: 'Dígito', arrows: 'to' },
-            { from: 'SIGNO_EXPONENTE', to: 'HECHO', label: 'Dígito', arrows: 'to' },
-            { from: 'OP_RELACIONAL_PARCIAL', to: 'HECHO', label: 'Otro carácter', arrows: 'to' },
-            { from: 'OP_RELACIONAL_DOBLE', to: 'HECHO', label: 'Aceptar', arrows: 'to' },
-            { from: 'OP_ARITMETICO', to: 'HECHO', label: 'Aceptar', arrows: 'to' },
-            { from: 'SIMBOLO_UNICO', to: 'HECHO', label: 'Aceptar', arrows: 'to' },
-            { from: 'DIAGONAL_INICIAL', to: 'HECHO', label: 'Otro (Op. División)', arrows: 'to' },
+            { from: 'CUERPO_CADENA', to: 'HECHO', label: 'Comillas Dobles ( Cierre )', arrows: 'to' },
+            { from: 'CUERPO_CARACTER', to: 'HECHO', label: 'Comilla Simple ( Cierre )', arrows: 'to' },
+            { from: 'IDENTIFICADOR', to: 'HECHO', label: 'Cualquier otro carácter', arrows: 'to' },
+            { from: 'NUMERO_ENTERO', to: 'HECHO', label: 'Cualquier otro carácter', arrows: 'to' },
+            { from: 'NUMERO_FLOTANTE', to: 'HECHO', label: 'Cualquier otro carácter', arrows: 'to' },
+            { from: 'LETRA_EXPONENTE', to: 'HECHO', label: 'Dígito Numérico', arrows: 'to' },
+            { from: 'SIGNO_EXPONENTE', to: 'HECHO', label: 'Dígito Numérico', arrows: 'to' },
+            { from: 'OP_RELACIONAL_PARCIAL', to: 'HECHO', label: 'Cualquier otro carácter', arrows: 'to' },
+            { from: 'OP_RELACIONAL_DOBLE', to: 'HECHO', label: 'Aceptar Token', arrows: 'to' },
+            { from: 'OP_ARITMETICO', to: 'HECHO', label: 'Aceptar Token', arrows: 'to' },
+            { from: 'SIMBOLO_UNICO', to: 'HECHO', label: 'Aceptar Token', arrows: 'to' },
+            { from: 'DIAGONAL_INICIAL', to: 'HECHO', label: 'Cualquier otro (Operador División)', arrows: 'to' },
             { from: 'COMENTARIO_LINEA', to: 'HECHO', label: 'Salto de Línea', arrows: 'to' },
-            { from: 'ASTERISCO_CIERRE', to: 'HECHO', label: 'Diagonal Cierre ( / )', arrows: 'to' }
+            { from: 'ASTERISCO_CIERRE', to: 'HECHO', label: 'Diagonal de Cierre ( / )', arrows: 'to' }
         ];
 
         var nodes = new vis.DataSet(nodesArray);
         var edges = new vis.DataSet(edgesArray);
         var container = document.getElementById('automata-network');
         
+        // --- CONFIGURACIÓN PARA MAYOR LEGIBILIDAD DOCENTE ---
         var options = {
             physics: false, 
             interaction: {
@@ -251,123 +308,61 @@
                 tooltipDelay: 30
             },
             nodes: {
-                borderWidth: 2,
-                font: { size: 18, face: 'arial', background: 'rgba(255,255,255,0.9)' }
+                borderWidth: 3,
+                font: { size: 24, face: 'arial', background: 'rgba(255,255,255,1)' } // Texto de nodo inmenso con fondo sólido
             },
             edges: {
                 smooth: false,
-                color: { color: '#555', highlight: '#000', hover: '#000' },
-                font: { align: 'middle', size: 16, background: 'rgba(255,255,255,0.95)' },
-                arrows: { to: { scaleFactor: 1.2 } },
-                width: 2,
-                selectionWidth: 3
+                color: { color: '#444', highlight: '#C70039', hover: '#C70039' },
+                // Letra enorme y fondo BLANCO SÓLIDO para que nunca se cruce visualmente con una línea
+                font: { align: 'middle', size: 20, background: 'rgba(255,255,255,1)', strokeWidth: 0, bold: true },
+                arrows: { to: { scaleFactor: 1.5 } }, // Flechas gigantes
+                width: 4, // Línea gruesa por defecto
+                hoverWidth: 4, // Al pasar el mouse se vuelve del doble de ancho (Hitbox enorme)
+                selectionWidth: 4
             }
         };
 
         var network = new vis.Network(container, { nodes: nodes, edges: edges }, options);
         
-        var miniNodes = new vis.DataSet();
-        var miniEdges = new vis.DataSet();
-        var tooltipContainer = document.getElementById('tooltip-container');
-        var infoText = document.getElementById('info-text');
-        var tooltipNetwork = null;
+        // --- LÓGICA DEL HUD GIGANTE ---
+        var hud = document.getElementById('hud-revision');
+        var hudOrigen = document.getElementById('hud-origen');
+        var hudCondicion = document.getElementById('hud-condicion');
+        var hudDestino = document.getElementById('hud-destino');
+        var instruccion = document.getElementById('instruccion');
 
-        function initMiniNetwork() {
-            if (!tooltipNetwork) {
-                var miniContainer = document.getElementById('tooltip-network');
-                var miniOptions = {
-                    physics: false,
-                    interaction: { dragNodes: false, zoomView: false, hover: false, dragView: false },
-                    nodes: { font: { size: 12, bold: true }, borderWidth: 2, shadow: true },
-                    edges: { 
-                        smooth: { type: 'dynamic' }, 
-                        font: { size: 12, align: 'top', background: 'rgba(255,255,255,0.8)' }, 
-                        arrows: { to: { scaleFactor: 0.8 } },
-                        color: { color: '#333' },
-                        width: 2
-                    }
-                };
-                tooltipNetwork = new vis.Network(miniContainer, { nodes: miniNodes, edges: miniEdges }, miniOptions);
-            }
-        }
-
-        function getFirstLine(text) {
-            return text ? text.split('\n')[0] : '';
+        // Función para limpiar saltos de línea y que se lea corrido en el HUD
+        function limpiarTexto(texto) {
+            return texto ? texto.replace(/\n/g, ' ') : '';
         }
 
         network.on("hoverEdge", function (params) {
-            initMiniNetwork(); 
-            
-            var edgeId = params.edge;
-            var edgeData = edges.get(edgeId);
+            var edgeData = edges.get(params.edge);
             if(!edgeData) return;
 
             var fromNode = nodes.get(edgeData.from);
             var toNode = nodes.get(edgeData.to);
 
-            miniNodes.clear();
-            miniEdges.clear();
+            // Poblar el HUD
+            hudOrigen.innerText = limpiarTexto(fromNode.label);
+            hudCondicion.innerText = limpiarTexto(edgeData.label) || 'Bucle Automático';
+            hudDestino.innerText = limpiarTexto(toNode.label);
 
-            if (edgeData.from === edgeData.to) {
-                miniNodes.add({
-                    id: 'm_' + fromNode.id,
-                    label: getFirstLine(fromNode.label),
-                    shape: fromNode.shape,
-                    color: fromNode.color,
-                    x: 0, y: 0
-                });
-
-                miniEdges.add({
-                    id: 'me_' + edgeId,
-                    from: 'm_' + fromNode.id,
-                    to: 'm_' + fromNode.id,
-                    label: edgeData.label,
-                    selfReference: { size: 25, angle: Math.PI / 2 } 
-                });
-            } else {
-                miniNodes.add({
-                    id: 'm_' + fromNode.id,
-                    label: getFirstLine(fromNode.label),
-                    shape: fromNode.shape,
-                    color: fromNode.color,
-                    x: -120, y: 0
-                });
-
-                miniNodes.add({
-                    id: 'm_' + toNode.id,
-                    label: getFirstLine(toNode.label),
-                    shape: toNode.shape,
-                    color: toNode.color,
-                    x: 120, y: 0
-                });
-
-                miniEdges.add({
-                    id: 'me_' + edgeId,
-                    from: 'm_' + fromNode.id,
-                    to: 'm_' + toNode.id,
-                    label: edgeData.label
-                });
-            }
-
-            var txt = "<strong>" + getFirstLine(fromNode.label) + "</strong>";
-            txt += "<br><span class='tooltip-arrow'>↓ (" + (edgeData.label || 'ε') + ")</span><br>";
-            txt += "<strong>" + getFirstLine(toNode.label) + "</strong>";
-            infoText.innerHTML = txt;
-
-            tooltipContainer.style.display = 'flex';
-            tooltipContainer.style.opacity = '0'; 
-
-            setTimeout(() => {
-                tooltipNetwork.fit({ animation: false });
-                tooltipContainer.style.opacity = '1';
-            }, 10);
+            // Ocultar instrucción, mostrar HUD
+            instruccion.style.display = 'none';
+            hud.style.display = 'block';
         });
 
-        network.on("blurEdge", function (params) {
-            tooltipContainer.style.display = 'none';
+        network.on("blurEdge", function () {
+            // Regresar a la normalidad
+            hud.style.display = 'none';
+            instruccion.style.display = 'block';
         });
 
+        // Animación inicial para centrar la telaraña
         network.once('afterDrawing', () => network.fit({ animation: { duration: 1000 } }));
+
     </script>
 </body>
 </html>
