@@ -31,7 +31,7 @@
             background: radial-gradient(circle at center, #f8f9fa 0%, #e9ecef 100%);
         }
 
-        /* --- LEYENDA (Movida abajo a la izquierda para no estorbar al HUD) --- */
+        /* --- LEYENDA --- */
         .leyenda-container {
             position: absolute;
             bottom: 30px;
@@ -49,7 +49,7 @@
         .leyenda-item { display: flex; align-items: center; margin-bottom: 8px; font-weight: 500;}
         .color-box { width: 22px; height: 22px; border-radius: 6px; margin-right: 12px; border: 2px solid rgba(0,0,0,0.2); }
 
-        /* --- HUD DE INSPECCIÓN GIGANTE (LA LUPA) --- */
+        /* --- HUD DE INSPECCIÓN INTELIGENTE --- */
         #hud-revision {
             position: absolute;
             top: 30px;
@@ -61,10 +61,11 @@
             box-shadow: 0 15px 40px rgba(0,0,0,0.2);
             border: 4px solid var(--accent-primary);
             z-index: 1000;
-            display: none; /* Se muestra al hacer hover */
+            display: none; 
             text-align: center;
-            min-width: 600px;
-            pointer-events: none; /* Para que no estorbe al mouse */
+            min-width: 650px;
+            max-width: 800px;
+            pointer-events: none; 
             animation: popIn 0.2s ease-out;
         }
 
@@ -74,20 +75,31 @@
         }
 
         .hud-titulo {
-            font-size: 14px;
+            font-size: 15px;
             text-transform: uppercase;
             letter-spacing: 2px;
             color: #666;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
             font-weight: bold;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 10px;
         }
 
+        /* Contenedor Transición (Flechas) */
         .hud-transicion {
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 20px;
             font-size: 22px;
+        }
+
+        /* Contenedor Estado (Nodos) */
+        .hud-estado-info {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
         }
 
         .hud-nodo {
@@ -98,6 +110,7 @@
             font-weight: bold;
             color: #212529;
             max-width: 300px;
+            word-wrap: break-word;
         }
 
         .hud-flecha {
@@ -111,11 +124,26 @@
         .hud-condicion {
             background: var(--accent-primary);
             color: white;
-            padding: 5px 15px;
-            border-radius: 20px;
+            padding: 8px 20px;
+            border-radius: 30px;
             font-size: 20px;
             margin-bottom: 5px;
             box-shadow: 0 4px 10px rgba(0,86,179,0.3);
+            text-align: center;
+        }
+
+        #hud-estado-desc {
+            margin-top: 15px;
+            font-size: 18px;
+            color: #444;
+            line-height: 1.4;
+            font-style: italic;
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 5px solid var(--accent-primary);
+            width: 100%;
+            box-sizing: border-box;
         }
 
         /* --- CONTROLES --- */
@@ -143,34 +171,42 @@
         .instruccion-top {
             position: absolute;
             top: 20px;
-            left: 20px;
+            left: 50%;
+            transform: translateX(-50%);
             background: #fff3cd;
             color: #856404;
             border: 2px solid #ffeeba;
-            padding: 10px 20px;
+            padding: 15px 30px;
             border-radius: 8px;
             font-weight: bold;
-            font-size: 16px;
+            font-size: 18px;
             z-index: 5;
             box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            text-align: center;
         }
     </style>
 </head>
 <body>
 
     <div class="instruccion-top" id="instruccion">
-        👉 Pasa el mouse sobre cualquier flecha para ver el detalle de la transición.
+        👉 Acerca el cursor a cualquier NODO o FLECHA para inspeccionar su lógica.
     </div>
 
     <div id="hud-revision">
-        <div class="hud-titulo">Inspección de Transición Léxica</div>
-        <div class="hud-transicion">
+        <div class="hud-titulo" id="hud-titulo">Inspección Léxica</div>
+        
+        <div class="hud-transicion" id="hud-transicion" style="display: none;">
             <div class="hud-nodo" id="hud-origen">ESTADO A</div>
             <div class="hud-flecha">
                 <div class="hud-condicion" id="hud-condicion">CONDICIÓN</div>
                 <div style="font-size: 30px; line-height: 0.5;">⟶</div>
             </div>
             <div class="hud-nodo" id="hud-destino">ESTADO B</div>
+        </div>
+
+        <div class="hud-estado-info" id="hud-estado-info" style="display: none;">
+            <div class="hud-nodo" id="hud-estado-nombre" style="font-size: 24px; max-width: 100%;">ESTADO</div>
+            <div id="hud-estado-desc">Descripción detallada del estado léxico.</div>
         </div>
     </div>
 
@@ -206,40 +242,39 @@
             done:    { background: '#c8e6c9', border: '#2e7d32' }
         };
 
-        // --- DATOS DEL AUTÓMATA (Textos más claros y amigables) ---
+        // --- DATOS DEL AUTÓMATA (Con descripciones ricas para el hover de nodos) ---
         var nodesArray = [
-            { id: 'INICIO', label: 'ESTADO INICIAL', shape: 'circle', color: colors.control, x: -7000, y: 500, font: {size: 35, bold: true}, size: 70 },
-            { id: 'HECHO', label: 'ESTADO DE ACEPTACIÓN\n(Token Listo)', shape: 'doubleCircle', color: colors.done, x: 2000, y: 500, font: { size: 40, bold: true }, borderWidth: 6, size: 90 },
+            { id: 'INICIO', label: 'ESTADO INICIAL', shape: 'circle', color: colors.control, x: -7000, y: 500, font: {size: 35, bold: true}, size: 70, desc: 'Punto de partida del analizador léxico. Consume espacios en blanco y espera el primer carácter válido para clasificar el token.' },
+            { id: 'HECHO', label: 'ESTADO DE ACEPTACIÓN\n(Token Listo)', shape: 'doubleCircle', color: colors.done, x: 2000, y: 500, font: { size: 40, bold: true }, borderWidth: 6, size: 90, desc: 'Estado final. Indica que el token actual se ha reconocido exitosamente. El lexema se empaqueta y se envía al parser (Analizador Sintáctico).' },
             
             // Anillo Principal
-            { id: 'CUERPO_CADENA', label: 'Cuerpo de Cadena', shape: 'ellipse', color: colors.text, x: -2000, y: -2800 },
-            { id: 'CUERPO_CARACTER', label: 'Carácter Interno', shape: 'ellipse', color: colors.text, x: -1500, y: -2300 },
-            { id: 'IDENTIFICADOR', label: 'Identificador Principal', shape: 'ellipse', color: colors.id, x: -1000, y: -1800 },
-            { id: 'NUMERO_ENTERO', label: 'Número Entero', shape: 'ellipse', color: colors.num, x: -600, y: -1300 },
-            { id: 'NUMERO_FLOTANTE', label: 'Número Flotante', shape: 'ellipse', color: colors.num, x: -300, y: -800 },
-            { id: 'LETRA_EXPONENTE', label: 'Letra Exponente', shape: 'ellipse', color: colors.num, x: -100, y: -300 },
-            { id: 'SIGNO_EXPONENTE', label: 'Signo Exponente', shape: 'ellipse', color: colors.num, x: 0, y: 200 },
-            { id: 'OP_RELACIONAL_PARCIAL', label: 'Operador Relacional\nSimple', shape: 'ellipse', color: colors.op, x: -100, y: 700 },
-            { id: 'OP_RELACIONAL_DOBLE', label: 'Operador Relacional\nDoble', shape: 'ellipse', color: colors.op, x: -300, y: 1200 },
-            { id: 'OP_ARITMETICO', label: 'Operador Aritmético', shape: 'ellipse', color: colors.op, x: -600, y: 1700 },
-            { id: 'SIMBOLO_UNICO', label: 'Símbolo Puntuación', shape: 'ellipse', color: colors.sym, x: -1000, y: 2200 },
-            { id: 'DIAGONAL_INICIAL', label: 'Primera Diagonal', shape: 'ellipse', color: colors.comment, x: -1500, y: 2700 },
-            { id: 'COMENTARIO_LINEA', label: 'Comentario de Línea', shape: 'ellipse', color: colors.comment, x: -2000, y: 3200 },
-            { id: 'ASTERISCO_CIERRE', label: 'Asterisco Cierre', shape: 'ellipse', color: colors.comment, x: -2500, y: 3700 },
+            { id: 'CUERPO_CADENA', label: 'Cuerpo de Cadena', shape: 'ellipse', color: colors.text, x: -2000, y: -2800, desc: 'Acumulando caracteres dentro de una cadena de texto (String). Permanece aquí hasta encontrar la comilla de cierre o un carácter de escape.' },
+            { id: 'CUERPO_CARACTER', label: 'Carácter Interno', shape: 'ellipse', color: colors.text, x: -1500, y: -2300, desc: 'Ha leído un único carácter dentro de comillas simples. Espera inmediatamente la comilla simple de cierre.' },
+            { id: 'IDENTIFICADOR', label: 'Identificador Principal', shape: 'ellipse', color: colors.id, x: -1000, y: -1800, desc: 'Procesando una palabra. Acumula letras, números o guiones bajos. Usado para variables, funciones o palabras reservadas del lenguaje.' },
+            { id: 'NUMERO_ENTERO', label: 'Número Entero', shape: 'ellipse', color: colors.num, x: -600, y: -1300, desc: 'Acumulando la parte entera de una constante numérica. Si lee un punto, transita a número flotante.' },
+            { id: 'NUMERO_FLOTANTE', label: 'Número Flotante', shape: 'ellipse', color: colors.num, x: -300, y: -800, desc: 'Acumulando la parte fraccionaria (decimales) de un número.' },
+            { id: 'LETRA_EXPONENTE', label: 'Letra Exponente', shape: 'ellipse', color: colors.num, x: -100, y: -300, desc: 'Ha detectado la letra \'e\' o \'E\' para notación científica. Espera el signo o el valor del exponente.' },
+            { id: 'SIGNO_EXPONENTE', label: 'Signo Exponente', shape: 'ellipse', color: colors.num, x: 0, y: 200, desc: 'Ha detectado un signo (+ o -) en la notación científica. Espera obligatoriamente dígitos numéricos.' },
+            { id: 'OP_RELACIONAL_PARCIAL', label: 'Operador Relacional\nSimple', shape: 'ellipse', color: colors.op, x: -100, y: 700, desc: 'Leyó un símbolo <, >, = o !. Si el siguiente carácter NO es un igual (=), el token se acepta como operador simple.' },
+            { id: 'OP_RELACIONAL_DOBLE', label: 'Operador Relacional\nDoble', shape: 'ellipse', color: colors.op, x: -300, y: 1200, desc: 'Reconoció un operador relacional de dos caracteres, como <=, >=, == o !=.' },
+            { id: 'OP_ARITMETICO', label: 'Operador Aritmético', shape: 'ellipse', color: colors.op, x: -600, y: 1700, desc: 'Reconoció un operador matemático elemental (+, -, *, %). Listo para aceptación inmediata.' },
+            { id: 'SIMBOLO_UNICO', label: 'Símbolo Puntuación', shape: 'ellipse', color: colors.sym, x: -1000, y: 2200, desc: 'Símbolos de agrupación o terminación de sentencias, como llaves, corchetes, paréntesis, comas o puntos y comas.' },
+            { id: 'DIAGONAL_INICIAL', label: 'Primera Diagonal', shape: 'ellipse', color: colors.comment, x: -1500, y: 2700, desc: 'Leyó una barra inclinada (/). Verifica el siguiente carácter para saber si es una división, o el inicio de un comentario.' },
+            { id: 'COMENTARIO_LINEA', label: 'Comentario de Línea', shape: 'ellipse', color: colors.comment, x: -2000, y: 3200, desc: 'Dentro de un comentario simple (//). Ignora todo el texto hasta que detecte el salto de línea (\\n).' },
+            { id: 'ASTERISCO_CIERRE', label: 'Asterisco Cierre', shape: 'ellipse', color: colors.comment, x: -2500, y: 3700, desc: 'Detectó un asterisco dentro de un comentario multilínea. Verifica si el siguiente carácter es la diagonal de cierre (*/).' },
 
             // Precursores y Error
-            { id: 'INICIO_CADENA', label: 'Abre Comillas Dobles', shape: 'ellipse', color: colors.text, x: -4000, y: -2800 },
-            { id: 'ESCAPE_CADENA', label: 'Carácter Escape', shape: 'ellipse', color: colors.text, x: -2000, y: -3300 },
-            { id: 'INICIO_CARACTER', label: 'Abre Comilla Simple', shape: 'ellipse', color: colors.text, x: -3500, y: -2300 },
-            { id: 'PUNTO_DECIMAL', label: 'Punto Decimal', shape: 'ellipse', color: colors.num, x: -1500, y: -1050 },
-            { id: 'COMENTARIO_BLOQUE', label: 'Comentario Multilínea', shape: 'ellipse', color: colors.comment, x: -3500, y: 3700 },
-            { id: 'ERROR_LEXICO', label: 'ERROR LÉXICO\n(Inválido)', shape: 'ellipse', color: colors.error, x: 2000, y: -2500, font: {size: 30} },
-            { id: 'FIN_ARCHIVO', label: 'ERROR: FIN DE ARCHIVO', shape: 'ellipse', color: colors.error, x: 2000, y: -1800, font: {size: 30} }
+            { id: 'INICIO_CADENA', label: 'Abre Comillas Dobles', shape: 'ellipse', color: colors.text, x: -4000, y: -2800, desc: 'Detectó la comilla de apertura ("). Prepara el buffer para capturar el texto.' },
+            { id: 'ESCAPE_CADENA', label: 'Carácter Escape', shape: 'ellipse', color: colors.text, x: -2000, y: -3300, desc: 'Leyó un carácter de escape (\\). El siguiente carácter será inyectado literalmente en la cadena (ej. \\n, \\t, \\").' },
+            { id: 'INICIO_CARACTER', label: 'Abre Comilla Simple', shape: 'ellipse', color: colors.text, x: -3500, y: -2300, desc: 'Detectó la comilla simple de apertura (\'). Espera capturar un solo carácter.' },
+            { id: 'PUNTO_DECIMAL', label: 'Punto Decimal', shape: 'ellipse', color: colors.num, x: -1500, y: -1050, desc: 'Detectó un punto después de un entero. Requiere obligatoriamente un dígito numérico a continuación.' },
+            { id: 'COMENTARIO_BLOQUE', label: 'Comentario Multilínea', shape: 'ellipse', color: colors.comment, x: -3500, y: 3700, desc: 'Dentro de un bloque de comentarios (/*). Ignorará todo, incluyendo saltos de línea, hasta encontrar la secuencia de cierre (*/).' },
+            { id: 'ERROR_LEXICO', label: 'ERROR LÉXICO\n(Inválido)', shape: 'ellipse', color: colors.error, x: 2000, y: -2500, font: {size: 30}, desc: 'El autómata leyó un carácter que rompe las reglas léxicas del lenguaje. Requiere rutina de recuperación de pánico.' },
+            { id: 'FIN_ARCHIVO', label: 'ERROR: FIN DE ARCHIVO', shape: 'ellipse', color: colors.error, x: 2000, y: -1800, font: {size: 30}, desc: 'El código fuente terminó abruptamente mientras el analizador esperaba cerrar una cadena o comentario.' }
         ];
 
         var edgesArray = [
             { from: 'INICIO', to: 'INICIO', label: 'Espacio / Tabulación / Salto', arrows: 'to', selfReference: { size: 90, angle: Math.PI } },
-            
             { from: 'INICIO', to: 'INICIO_CADENA', label: 'Comillas Dobles ( " )', arrows: 'to' },
             { from: 'INICIO', to: 'INICIO_CARACTER', label: 'Comilla Simple ( \' )', arrows: 'to' },
             { from: 'INICIO', to: 'IDENTIFICADOR', label: 'Letra o Guion Bajo ( _ )', arrows: 'to' },
@@ -278,6 +313,7 @@
             
             { from: 'PUNTO_DECIMAL', to: 'ERROR_LEXICO', label: 'No es un dígito', arrows: 'to', font: {color: '#c62828'} },
             
+            // Líneas de Aceptación a HECHO
             { from: 'CUERPO_CADENA', to: 'HECHO', label: 'Comillas Dobles ( Cierre )', arrows: 'to' },
             { from: 'CUERPO_CARACTER', to: 'HECHO', label: 'Comilla Simple ( Cierre )', arrows: 'to' },
             { from: 'IDENTIFICADOR', to: 'HECHO', label: 'Cualquier otro carácter', arrows: 'to' },
@@ -298,45 +334,49 @@
         var edges = new vis.DataSet(edgesArray);
         var container = document.getElementById('automata-network');
         
-        // --- CONFIGURACIÓN PARA MAYOR LEGIBILIDAD DOCENTE ---
+        // --- CONFIGURACIÓN OPTIMIZADA PARA DETECCIÓN TEMPRANA ---
         var options = {
             physics: false, 
             interaction: {
                 hover: true, 
+                hoverConnectedEdges: false, // Desactivar para no saturar al pasar por nodos
                 zoomView: true,
                 navigationButtons: true,
-                tooltipDelay: 30
+                tooltipDelay: 10 // Detección instantánea
             },
             nodes: {
                 borderWidth: 3,
-                font: { size: 24, face: 'arial', background: 'rgba(255,255,255,1)' } // Texto de nodo inmenso con fondo sólido
+                font: { size: 24, face: 'arial', background: 'rgba(255,255,255,1)' }
             },
             edges: {
                 smooth: false,
                 color: { color: '#444', highlight: '#C70039', hover: '#C70039' },
-                // Letra enorme y fondo BLANCO SÓLIDO para que nunca se cruce visualmente con una línea
                 font: { align: 'middle', size: 20, background: 'rgba(255,255,255,1)', strokeWidth: 0, bold: true },
-                arrows: { to: { scaleFactor: 1.5 } }, // Flechas gigantes
-                width: 4, // Línea gruesa por defecto
-                hoverWidth: 4, // Al pasar el mouse se vuelve del doble de ancho (Hitbox enorme)
+                arrows: { to: { scaleFactor: 1.5 } },
+                width: 6, // EL SECRETO: Una línea base mucho más gruesa
+                hoverWidth: 6, // Al pasar el mouse, el hitbox suma 6px extra, haciéndolo casi magnético.
                 selectionWidth: 4
             }
         };
 
         var network = new vis.Network(container, { nodes: nodes, edges: edges }, options);
         
-        // --- LÓGICA DEL HUD GIGANTE ---
+        // --- CONTROL DE ESTADO DEL HUD ---
         var hud = document.getElementById('hud-revision');
+        var hudTitulo = document.getElementById('hud-titulo');
+        var containerTransicion = document.getElementById('hud-transicion');
+        var containerEstado = document.getElementById('hud-estado-info');
+        
         var hudOrigen = document.getElementById('hud-origen');
         var hudCondicion = document.getElementById('hud-condicion');
         var hudDestino = document.getElementById('hud-destino');
+        var hudEstadoNombre = document.getElementById('hud-estado-nombre');
+        var hudEstadoDesc = document.getElementById('hud-estado-desc');
         var instruccion = document.getElementById('instruccion');
 
-        // Función para limpiar saltos de línea y que se lea corrido en el HUD
-        function limpiarTexto(texto) {
-            return texto ? texto.replace(/\n/g, ' ') : '';
-        }
+        function limpiarTexto(texto) { return texto ? texto.replace(/\n/g, ' ') : ''; }
 
+        // Evento 1: Mouse entra a una FLECHA (Transición)
         network.on("hoverEdge", function (params) {
             var edgeData = edges.get(params.edge);
             if(!edgeData) return;
@@ -344,23 +384,51 @@
             var fromNode = nodes.get(edgeData.from);
             var toNode = nodes.get(edgeData.to);
 
-            // Poblar el HUD
+            // Configurar Layout para Flechas
+            hudTitulo.innerText = "🔍 Inspección de Transición (Flecha)";
+            containerTransicion.style.display = 'flex';
+            containerEstado.style.display = 'none';
+
+            // Poblar Datos
             hudOrigen.innerText = limpiarTexto(fromNode.label);
             hudCondicion.innerText = limpiarTexto(edgeData.label) || 'Bucle Automático';
             hudDestino.innerText = limpiarTexto(toNode.label);
 
-            // Ocultar instrucción, mostrar HUD
             instruccion.style.display = 'none';
             hud.style.display = 'block';
         });
 
+        // Evento 2: Mouse sale de una FLECHA
         network.on("blurEdge", function () {
-            // Regresar a la normalidad
             hud.style.display = 'none';
             instruccion.style.display = 'block';
         });
 
-        // Animación inicial para centrar la telaraña
+        // Evento 3: Mouse entra a un NODO (Estado)
+        network.on("hoverNode", function (params) {
+            var nodeData = nodes.get(params.node);
+            if(!nodeData) return;
+
+            // Configurar Layout para Nodos
+            hudTitulo.innerText = "🎯 Inspección de Estado (Nodo)";
+            containerTransicion.style.display = 'none';
+            containerEstado.style.display = 'flex';
+
+            // Poblar Datos
+            hudEstadoNombre.innerText = limpiarTexto(nodeData.label);
+            hudEstadoDesc.innerText = nodeData.desc || 'Estado intermedio genérico del autómata.';
+
+            instruccion.style.display = 'none';
+            hud.style.display = 'block';
+        });
+
+        // Evento 4: Mouse sale de un NODO
+        network.on("blurNode", function () {
+            hud.style.display = 'none';
+            instruccion.style.display = 'block';
+        });
+
+        // Animación de centrado inicial
         network.once('afterDrawing', () => network.fit({ animation: { duration: 1000 } }));
 
     </script>
