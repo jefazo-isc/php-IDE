@@ -15,21 +15,23 @@ if (!is_file($archivo)) {
 $codigo = file_get_contents($archivo);
 $longitud = strlen($codigo);
 
+// Se agregó \s* dentro de los operadores de múltiples caracteres para permitir que 
+// se unan aunque estén separados por espacios o saltos de línea múltiples.
 $patrones = [
-    'COM_MULTI'     => '/^\/\*[\s\S]*?\*\//',
-    'COM_SIMPLE'    => '/^\/\/[^\n]*/',
-    'RESERVADA'     => '/^(if|else|end|do|while|switch|case|int|float|main|cin|cout)\b/',
-    'ID'            => '/^[a-zA-Z_][a-zA-Z0-9_]*/',
-    'NUM_REAL'      => '/^[0-9]+\.[0-9]+/',
-    'ERR_NUM'       => '/^[0-9]+\.(?![0-9])/',
-    'NUM_ENTERO'    => '/^[0-9]+/',
-    'OP_RELACIONAL' => '/^(<=|>=|!=|==|<|>)/',
-    'OP_LOGICO'     => '/^(&&|\|\||!)/',
-    'OP_ARITMETICO' => '/^(\+\+|--|\+|-|\*|\/|%|\^)/',
-    'ASIGNACION'    => '/^=/',
-    'CADENA'        => '/^"[^"]*"/',
-    'CARACTER'      => '/^\'[^\']*\'/',
-    'SIMBOLO'       => '/^(\(|\)|\{|\}|,|;|"|\')/'
+    'COM_MULTI'     => '/^\/\*[\s\S]*?\*\//u',
+    'COM_SIMPLE'    => '/^\/\/[^\n]*/u',
+    'RESERVADA'     => '/^(if|else|end|do|while|switch|case|int|float|main|cin|cout|real|then|until)\b/u',
+    'ID'            => '/^[a-zA-Z_][a-zA-Z0-9_]*/u',
+    'NUM_REAL'      => '/^[0-9]+\.[0-9]+/u',
+    'ERR_NUM'       => '/^[0-9]+\.(?![0-9])/u',
+    'NUM_ENTERO'    => '/^[0-9]+/u',
+    'OP_RELACIONAL' => '/^(<\s*=|>\s*=|!\s*=|=\s*=|<|>)/u',
+    'OP_LOGICO'     => '/^(&\s*&|\|\s*\||!)/u',
+    'OP_ARITMETICO' => '/^(\+\s*\+|-\s*-|\+|-|\*|\/|%|\^)/u',
+    'ASIGNACION'    => '/^=/u',
+    'CADENA'        => '/^"[^"]*"/u',
+    'CARACTER'      => '/^\'[^\']*\'/u',
+    'SIMBOLO'       => '/^(\(|\)|\{|\}|,|;|"|\')/u'
 ];
 
 $offset = 0;
@@ -43,15 +45,18 @@ while ($offset < $longitud) {
     $subcadena = substr($codigo, $offset);
     $matched = false;
 
-    if (preg_match('/^(\s+)/', $subcadena, $coincidencia)) {
+    // Soporte robusto para espacios y saltos de línea puros
+    if (preg_match('/^(\s+)/u', $subcadena, $coincidencia)) {
         $espacios = $coincidencia[1];
         $lineas_en_espacio = substr_count($espacios, "\n");
         
         if ($lineas_en_espacio > 0) {
             $linea_actual += $lineas_en_espacio;
-            $col_actual = strlen($espacios) - strrpos($espacios, "\n");
+            $ultimo_salto = strrpos($espacios, "\n");
+            $texto_despues = substr($espacios, $ultimo_salto + 1);
+            $col_actual = mb_strlen($texto_despues, 'UTF-8') + 1;
         } else {
-            $col_actual += strlen($espacios);
+            $col_actual += mb_strlen($espacios, 'UTF-8');
         }
         $offset += strlen($espacios);
         continue;
@@ -59,14 +64,21 @@ while ($offset < $longitud) {
 
     foreach ($patrones as $tipo => $regex) {
         if (preg_match($regex, $subcadena, $coincidencia)) {
-            $lexema = mb_convert_encoding($coincidencia[0], 'UTF-8', 'auto');
+            $lexema_original = mb_convert_encoding($coincidencia[0], 'UTF-8', 'auto');
+            $lexema_mostrar = $lexema_original;
             
+            // Limpiamos los saltos de línea internos solo para la interfaz, 
+            // así "=\n\n=" se muestra como "==".
+            if (in_array($tipo, ['OP_RELACIONAL', 'OP_LOGICO', 'OP_ARITMETICO'])) {
+                $lexema_mostrar = preg_replace('/\s+/', '', $lexema_original);
+            }
+
             if ($tipo === 'ERR_NUM') {
                 $errores[] = [
                     'linea' => $linea_actual, 
                     'col' => $col_actual, 
                     'tipo' => 'ERROR_LÉXICO', 
-                    'lexema' => $lexema,
+                    'lexema' => $lexema_mostrar,
                     'msg' => 'Número malformado'
                 ];
             } elseif ($tipo !== 'COM_MULTI' && $tipo !== 'COM_SIMPLE') {
@@ -74,19 +86,22 @@ while ($offset < $longitud) {
                     'linea' => $linea_actual, 
                     'col' => $col_actual, 
                     'tipo' => $tipo, 
-                    'lexema' => $lexema
+                    'lexema' => $lexema_mostrar
                 ];
             }
             
-            $lineas_en_lexema = substr_count($lexema, "\n");
+            // El conteo lógico se hace sobre el lexema original con todo y sus saltos
+            $lineas_en_lexema = substr_count($lexema_original, "\n");
             if ($lineas_en_lexema > 0) {
                 $linea_actual += $lineas_en_lexema;
-                $col_actual = strlen($lexema) - strrpos($lexema, "\n");
+                $ultimo_salto_lex = strrpos($lexema_original, "\n");
+                $texto_despues_lex = substr($lexema_original, $ultimo_salto_lex + 1);
+                $col_actual = mb_strlen($texto_despues_lex, 'UTF-8') + 1;
             } else {
-                $col_actual += mb_strlen($lexema, 'UTF-8'); 
+                $col_actual += mb_strlen($lexema_original, 'UTF-8'); 
             }
             
-            $offset += strlen($lexema);
+            $offset += strlen($lexema_original);
             $matched = true;
             break;
         }

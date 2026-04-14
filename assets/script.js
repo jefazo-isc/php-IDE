@@ -19,7 +19,8 @@ const DOM = {
     topLayout: document.querySelector('.top-layout'),
     resizerV: document.getElementById('resizer_v'),
     resizerExp: document.getElementById('resizer_explorer'),
-    resizerH: document.getElementById('resizer_h')
+    resizerH: document.getElementById('resizer_h'),
+    activeLineIndicator: null
 };
 
 let currentExt = DOM.fileExt.value;
@@ -202,9 +203,35 @@ function setExtension(filename) {
     procesarCambiosPesados();
 }
 
+function updateActiveLine() {
+    if (!DOM.activeLineIndicator) return;
+    const pos = DOM.editor.selectionStart;
+    const lines = DOM.editor.value.substring(0, pos).split('\n');
+    const currentLine = lines.length;
+    const lineHeight = 21; // 14px * 1.5
+    const topPos = 10 + (currentLine - 1) * lineHeight - DOM.editor.scrollTop;
+    DOM.activeLineIndicator.style.top = `${topPos}px`;
+}
+
+function seleccionarLinea(linea) {
+    const lineas = DOM.editor.value.split('\n');
+    if (linea < 1 || linea > lineas.length) return;
+
+    let posInicio = 0;
+    for (let i = 0; i < linea - 1; i++) {
+        posInicio += lineas[i].length + 1;
+    }
+    let posFin = posInicio + lineas[linea - 1].length;
+
+    DOM.editor.focus();
+    DOM.editor.setSelectionRange(posInicio, posFin);
+    actualizarCursorRápido();
+}
+
 function syncScroll() {
     DOM.lineNumbers.scrollTop = DOM.highlighting.scrollTop = DOM.editor.scrollTop;
     DOM.highlighting.scrollLeft = DOM.editor.scrollLeft;
+    updateActiveLine();
 }
 
 function handleInput() {
@@ -229,6 +256,7 @@ function actualizarCursorRápido() {
     const pos = DOM.editor.selectionStart;
     const lines = DOM.editor.value.substring(0, pos).split('\n');
     DOM.cursorPos.textContent = `Ln ${lines.length}, Col ${lines[lines.length - 1].length + 1}`;
+    updateActiveLine();
 }
 
 function synchronizeScrollbarOffset() { DOM.lineNumbers.style.paddingBottom = `${10 + DOM.editor.offsetHeight - DOM.editor.clientHeight}px`; }
@@ -497,6 +525,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const theme = localStorage.getItem('ide_theme');
     if (theme === 'light') document.body.classList.add('light-theme');
     else if (theme === 'rgb') document.body.classList.add('rgb-theme');
+    
+    // Inyección de Indicador de Línea Activa
+    DOM.activeLineIndicator = document.createElement('div');
+    DOM.activeLineIndicator.id = 'active_line_indicator';
+    document.querySelector('.code-area').prepend(DOM.activeLineIndicator);
+    
+    // Evento de clic sobre los números de línea
+    DOM.lineNumbers.addEventListener('mousedown', (e) => {
+        const rect = DOM.lineNumbers.getBoundingClientRect();
+        // Calculo matemático: 21px es el line-height exacto (14px font-size * 1.5)
+        const clickY = e.clientY - rect.top + DOM.lineNumbers.scrollTop - 10;
+        if (clickY < 0) return;
+        const clickedLine = Math.floor(clickY / 21) + 1;
+        seleccionarLinea(clickedLine);
+    });
     
     setFilename(DOM.currentFilename.value);
     procesarCambiosPesados();
