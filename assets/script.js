@@ -1,200 +1,150 @@
-const editor = document.getElementById('editor');
-const highlighting = document.getElementById('highlighting');
-const lineNumbers = document.getElementById('line_numbers');
-const cursorPos = document.getElementById('cursor_pos');
+// ==========================================================================
+// CACHÉ DEL DOM (Optimización de rendimiento)
+// ==========================================================================
+const DOM = {
+    editor: document.getElementById('editor'),
+    highlighting: document.getElementById('highlighting'),
+    lineNumbers: document.getElementById('line_numbers'),
+    cursorPos: document.getElementById('cursor_pos'),
+    fileExt: document.getElementById('file_extension'),
+    currentFilename: document.getElementById('current_filename'),
+    fileIndicator: document.getElementById('file_indicator'),
+    statusMsg: document.getElementById('status_msg'),
+    workspacePath: document.getElementById('workspace_path'),
+    explorerContent: document.getElementById('explorer_content'),
+    fileExplorer: document.getElementById('file_explorer'),
+    editorContainer: document.getElementById('editor_container'),
+    rightPanels: document.getElementById('right_panels'),
+    bottomPanels: document.getElementById('bottom_panels'),
+    topLayout: document.querySelector('.top-layout'),
+    resizerV: document.getElementById('resizer_v'),
+    resizerExp: document.getElementById('resizer_explorer'),
+    resizerH: document.getElementById('resizer_h')
+};
 
-let currentExt = document.getElementById('file_extension').value;
+let currentExt = DOM.fileExt.value;
 let currentOpenedFileAbsPath = '';
-let fileHandle = null;
 let currentLineCount = 0;
-let typingTimer;
 let saveInProgress = false;
-
-const resizerV = document.getElementById('resizer_v');
-const resizerExp = document.getElementById('resizer_explorer');
-const resizerH = document.getElementById('resizer_h');
-const editorSection = document.getElementById('editor_container');
-const fileExplorer = document.getElementById('file_explorer');
-const topLayout = document.querySelector('.top-layout');
-
-let isResizingV = false;
-let isResizingExp = false;
-let isResizingH = false;
-let animationFrameId = null;
 
 // ==========================================================================
 // SISTEMA DE MODALES
 // ==========================================================================
 const Modals = {
-    show: function(titulo, htmlContent, buttons) {
-        return new Promise((resolve) => {
-            const existing = document.getElementById('ide_modal_overlay');
-            if (existing) existing.remove();
+    show: (titulo, htmlContent, buttons) => new Promise((resolve) => {
+        document.getElementById('ide_modal_overlay')?.remove();
 
-            const overlay = document.createElement('div');
-            overlay.id = 'ide_modal_overlay';
-            overlay.style.cssText = [
-                'position: fixed; top: 0; left: 0; width: 100%; height: 100%;',
-                'background: rgba(0,0,0,0.6); z-index: 9999; display: flex;',
-                'justify-content: center; align-items: center;'
-            ].join(' ');
-            
-            const box = document.createElement('div');
-            box.style.cssText = [
-                'background: var(--bg-secondary); border: 1px solid var(--border-color);',
-                'border-radius: 6px; padding: 20px; min-width: 350px; max-width: 500px;',
-                'box-shadow: 0 5px 15px var(--shadow-color); font-family: var(--font-sans);'
-            ].join(' ');
-            
-            let btnsHtml = buttons.map((b, i) => {
-                const bg = b.primary ? 'var(--accent-primary)' : 'var(--bg-tertiary)';
-                const fw = b.primary ? 'bold' : 'normal';
-                return [
-                    '<button id="mbtn_' + i + '" style="',
-                    'padding: 8px 15px; cursor: pointer; background: ' + bg + ';',
-                    'color: #fff; border: 1px solid var(--border-color); border-radius: 4px;',
-                    'margin-left: 10px; font-weight: ' + fw + '; transition: background 0.2s;">',
-                    b.text,
-                    '</button>'
-                ].join('');
-            }).join('');
+        const overlay = document.createElement('div');
+        overlay.id = 'ide_modal_overlay';
+        overlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; display: flex; justify-content: center; align-items: center;';
+        
+        const btnsHtml = buttons.map((b, i) => {
+            const bg = b.primary ? 'var(--accent-primary)' : 'var(--bg-tertiary)';
+            const fw = b.primary ? 'bold' : 'normal';
+            return `<button id="mbtn_${i}" style="padding: 8px 15px; cursor: pointer; background: ${bg}; color: #fff; border: 1px solid var(--border-color); border-radius: 4px; margin-left: 10px; font-weight: ${fw}; transition: background 0.2s;">${b.text}</button>`;
+        }).join('');
 
-            box.innerHTML = [
-                '<h3 style="margin-top: 0; color: var(--text-primary); margin-bottom: 15px;">', titulo, '</h3>',
-                '<div style="color: var(--text-primary); margin-bottom: 20px; font-size: 14px; max-height: 60vh; overflow-y: auto;">',
-                htmlContent, '</div>',
-                '<div style="display: flex; justify-content: flex-end;">', btnsHtml, '</div>'
-            ].join('');
-            
-            overlay.appendChild(box);
-            document.body.appendChild(overlay);
+        const box = document.createElement('div');
+        box.style.cssText = 'background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 6px; padding: 20px; min-width: 350px; max-width: 500px; box-shadow: 0 5px 15px var(--shadow-color); font-family: var(--font-sans);';
+        box.innerHTML = `<h3 style="margin-top: 0; color: var(--text-primary); margin-bottom: 15px;">${titulo}</h3><div style="color: var(--text-primary); margin-bottom: 20px; font-size: 14px; max-height: 60vh; overflow-y: auto;">${htmlContent}</div><div style="display: flex; justify-content: flex-end;">${btnsHtml}</div>`;
+        
+        overlay.appendChild(box);
+        document.body.appendChild(overlay);
 
-            buttons.forEach((b, i) => {
-                const btn = document.getElementById('mbtn_' + i);
-                btn.addEventListener('click', () => {
-                    overlay.style.display = 'none';
-                    resolve(b.value);
-                    setTimeout(() => overlay.remove(), 50);
-                });
+        buttons.forEach((b, i) => {
+            document.getElementById(`mbtn_${i}`).addEventListener('click', () => {
+                overlay.style.display = 'none';
+                resolve(b.value);
+                setTimeout(() => overlay.remove(), 50);
             });
         });
-    },
-    prompt: async function(titulo, mensaje, valorPorDefecto = '') {
-        const html = [
-            '<p style="margin-bottom: 10px;">' + mensaje + '</p>',
-            '<input type="text" id="modal_input" value="' + valorPorDefecto + '" style="',
-            'width: 100%; padding: 8px; background: var(--bg-primary); color: var(--text-primary);',
-            'border: 1px solid var(--border-color); border-radius: 4px; outline: none; font-family: var(--font-mono);">'
-        ].join('');
-                     
+    }),
+    prompt: async (titulo, mensaje, def = '') => {
+        const html = `<p style="margin-bottom: 10px;">${mensaje}</p><input type="text" id="modal_input" value="${def}" style="width: 100%; padding: 8px; background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 4px; outline: none; font-family: var(--font-mono);">`;
         setTimeout(() => {
             const input = document.getElementById('modal_input');
-            if(input) {
+            if (input) {
                 input.focus();
                 const dotIndex = input.value.lastIndexOf('.');
-                if (dotIndex > 0) input.setSelectionRange(0, dotIndex);
-                else input.select();
-                input.addEventListener('keydown', (e) => {
-                    if(e.key === 'Enter') document.getElementById('mbtn_1').click();
-                });
+                dotIndex > 0 ? input.setSelectionRange(0, dotIndex) : input.select();
+                input.addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('mbtn_1').click(); });
             }
         }, 50);
-
-        const res = await this.show(titulo, html, [
-            {text: 'Cancelar', value: null},
-            {text: 'Aceptar', value: 'OK', primary: true}
-        ]);
-        return res === 'OK' ? document.getElementById('modal_input').value : null;
+        return await Modals.show(titulo, html, [{text: 'Cancelar', value: null}, {text: 'Aceptar', value: 'OK', primary: true}]) === 'OK' ? document.getElementById('modal_input').value : null;
     },
-    confirm: async function(tit, msg, btnSi = 'Sí', btnNo = 'No') {
-        return await this.show(tit, '<p>' + msg + '</p>', [
-            {text: btnNo, value: false}, {text: btnSi, value: true, primary: true}
-        ]);
-    },
-    alert: async function(tit, msg) {
-        const html = '<pre style="white-space: pre-wrap; font-family: var(--font-mono); margin: 0;">' + msg + '</pre>';
-        await this.show(tit, html, [{text: 'Aceptar', value: true, primary: true}]);
-    }
+    confirm: async (tit, msg, btnSi = 'Sí', btnNo = 'No') => await Modals.show(tit, `<p>${msg}</p>`, [{text: btnNo, value: false}, {text: btnSi, value: true, primary: true}]),
+    alert: async (tit, msg) => await Modals.show(tit, `<pre style="white-space: pre-wrap; font-family: var(--font-mono); margin: 0;">${msg}</pre>`, [{text: 'Aceptar', value: true, primary: true}])
 };
 
 // ==========================================================================
 // RESIZERS
 // ==========================================================================
-resizerV.addEventListener('mousedown', () => { isResizingV = true; document.body.style.cursor = 'col-resize'; editor.style.pointerEvents = 'none'; });
-resizerExp.addEventListener('mousedown', () => { isResizingExp = true; document.body.style.cursor = 'col-resize'; editor.style.pointerEvents = 'none'; });
-resizerH.addEventListener('mousedown', () => { isResizingH = true; document.body.style.cursor = 'row-resize'; editor.style.pointerEvents = 'none'; });
+let isResizing = { v: false, exp: false, h: false };
+let animFrame = null;
 
-document.addEventListener('mousemove', (e) => {
-    if (!isResizingV && !isResizingH && !isResizingExp) return;
-    if (animationFrameId) cancelAnimationFrame(animationFrameId);
+const enableResize = (type, cursor) => {
+    isResizing[type] = true;
+    document.body.style.cursor = cursor;
+    DOM.editor.style.pointerEvents = 'none';
+};
+
+DOM.resizerV.addEventListener('mousedown', () => enableResize('v', 'col-resize'));
+DOM.resizerExp.addEventListener('mousedown', () => enableResize('exp', 'col-resize'));
+DOM.resizerH.addEventListener('mousedown', () => enableResize('h', 'row-resize'));
+
+document.addEventListener('mousemove', e => {
+    if (!isResizing.v && !isResizing.h && !isResizing.exp) return;
+    if (animFrame) cancelAnimationFrame(animFrame);
     
-    animationFrameId = requestAnimationFrame(() => {
-        if (isResizingV) {
-            let width = document.body.clientWidth - e.clientX;
-            if (width > 200 && width < window.innerWidth - 200) document.getElementById('right_panels').style.width = width + 'px';
+    animFrame = requestAnimationFrame(() => {
+        if (isResizing.v) {
+            let w = document.body.clientWidth - e.clientX;
+            if (w > 200 && w < window.innerWidth - 200) DOM.rightPanels.style.width = w + 'px';
         }
-        if (isResizingExp) {
-            let width = e.clientX;
-            if (width > 150 && width < window.innerWidth / 2) fileExplorer.style.width = width + 'px';
+        if (isResizing.exp) {
+            let w = e.clientX;
+            if (w > 150 && w < window.innerWidth / 2) DOM.fileExplorer.style.width = w + 'px';
         }
-        if (isResizingH) {
-            let newHeight = e.clientY - document.querySelector('.main-layout').getBoundingClientRect().top;
-            if (newHeight > 100 && newHeight < window.innerHeight - 100) topLayout.style.flex = '0 0 ' + newHeight + 'px';
+        if (isResizing.h) {
+            let h = e.clientY - document.querySelector('.main-layout').getBoundingClientRect().top;
+            if (h > 100 && h < window.innerHeight - 100) DOM.topLayout.style.flex = `0 0 ${h}px`;
         }
     });
 });
 
 document.addEventListener('mouseup', () => {
-    isResizingV = isResizingH = isResizingExp = false;
+    isResizing = { v: false, exp: false, h: false };
     document.body.style.cursor = 'default';
-    editor.style.pointerEvents = 'auto';
+    DOM.editor.style.pointerEvents = 'auto';
 });
-
 window.addEventListener('resize', synchronizeScrollbarOffset);
 
 // ==========================================================================
-// ATAJOS Y EXPLORADOR
+// EXPLORADOR Y ATAJOS
 // ==========================================================================
-document.addEventListener('keydown', function(e) {
-    if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); guardarArchivo(); }
-});
+document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); guardarArchivo(); } });
 
 async function cargarExplorador(rutaSolicitada = null) {
-    const content = document.getElementById('explorer_content');
-    const inputPath = document.getElementById('workspace_path');
-    let ruta = rutaSolicitada === null ? inputPath.value.trim() : rutaSolicitada;
-    
-    const formData = new URLSearchParams();
-    formData.append('accion', 'explorar_directorio');
-    if (ruta !== '') formData.append('ruta', ruta);
+    const ruta = rutaSolicitada ?? DOM.workspacePath.value.trim();
+    const formData = new URLSearchParams({ accion: 'explorar_directorio', ...(ruta && { ruta }) });
 
     try {
-        const response = await fetch('index.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: formData.toString()
-        });
-        const res = await response.json();
+        const res = await (await fetch('index.php', { method: 'POST', body: formData })).json();
         if (res.success) {
-            inputPath.value = res.ruta_actual;
-            let html = '';
-            res.elementos.forEach(el => {
-                const rEsc = el.ruta.replace(/\\/g, '\\\\');
-                const mName = el.nombre.replace(/'/g, "\\'");
-                if (el.es_directorio) {
-                    html += ['<div class="explorer-item folder" onclick="cargarExplorador(\'', rEsc, '\')">', el.nombre, '</div>'].join('');
-                } else {
-                    html += ['<div class="explorer-item file" onclick="abrirDesdeExplorador(\'', rEsc, '\', \'', mName, '\')">', el.nombre, '</div>'].join('');
-                }
-            });
-            content.innerHTML = html || '<div style="padding: 10px; color: var(--text-muted);">Carpeta vacía</div>';
+            DOM.workspacePath.value = res.ruta_actual;
+            DOM.explorerContent.innerHTML = res.elementos.length ? res.elementos.map(el => {
+                const rEsc = el.ruta.replace(/\\/g, '\\\\'), mName = el.nombre.replace(/'/g, "\\'");
+                return el.es_directorio 
+                    ? `<div class="explorer-item folder" onclick="cargarExplorador('${rEsc}')">${el.nombre}</div>`
+                    : `<div class="explorer-item file"><div class="file-name" onclick="abrirDesdeExplorador('${rEsc}', '${mName}')">${el.nombre}</div><button class="btn-delete-file" onclick="borrarArchivo(event, '${rEsc}', '${mName}')" title="Eliminar archivo">🗑️</button></div>`;
+            }).join('') : '<div style="padding: 10px; color: var(--text-muted);">Carpeta vacía</div>';
         }
     } catch (e) { console.error("Error explorador:", e); }
 }
 
 function subirDirectorio() {
-    const rutaActual = document.getElementById('workspace_path').value;
-    if (rutaActual.trim() !== '') {
+    const rutaActual = DOM.workspacePath.value.trim();
+    if (rutaActual) {
         let partes = rutaActual.split(/[\\/]/);
         partes.pop();
         cargarExplorador(partes.length <= 1 ? '/' : partes.join('/'));
@@ -203,132 +153,217 @@ function subirDirectorio() {
 
 async function abrirDesdeExplorador(rutaAbsoluta, nombre) {
     try {
-        const response = await fetch('index.php?accion=cargar_archivo&ruta_absoluta=' + encodeURIComponent(rutaAbsoluta));
-        const data = await response.json();
+        const data = await (await fetch(`index.php?accion=cargar_archivo&ruta_absoluta=${encodeURIComponent(rutaAbsoluta)}`)).json();
         if (data.success) {
-            editor.value = decodeURIComponent(escape(atob(data.contenido)));
+            DOM.editor.value = decodeURIComponent(escape(atob(data.contenido)));
             setFilename(data.nombre);
             currentOpenedFileAbsPath = data.ruta_absoluta;
-            fileHandle = null;
             procesarCambiosPesados();
             limpiarPaneles();
-            mostrarNotificacionGuardado('📂 Abierto');
+            mostrarNotificacion('📂 Abierto');
         }
-    } catch (e) { mostrarError("Error al abrir"); }
+    } catch (e) { mostrarNotificacion("Error al abrir", true); }
 }
 
-function toggleExplorer() {
-    fileExplorer.classList.toggle('panel-hidden');
-    resizerExp.classList.toggle('panel-hidden');
-}
+const togglePanel = (el, resizer) => { el.classList.toggle('panel-hidden'); resizer.classList.toggle('panel-hidden'); };
+function toggleExplorer() { togglePanel(DOM.fileExplorer, DOM.resizerExp); }
+function toggleRightPanel() { togglePanel(DOM.rightPanels, DOM.resizerV); }
+function toggleBottomPanel() { togglePanel(DOM.bottomPanels, DOM.resizerH); }
 
 // ==========================================================================
-// RESALTADO DE SINTAXIS
+// EDITOR Y SINTAXIS
 // ==========================================================================
 function applySyntaxHighlighting(text) {
-    let html = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    let regex;
-    const kw_c = ['int','float','void','if','else','while','for','return','printf','scanf','char','double','struct','include'].join('|');
-    const kw_web = ['if','else','while','for','return','echo','public','private','protected','function','class','require','include','isset','empty','let','const','var','console','document','window','await','async','new','true','false','null','switch','case','break','default'].join('|');
+    const html = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const kw = 'if|else|end|do|while|switch|case|int|float|main|cin|cout';
+    const regex = new RegExp(`(\\/\\*[\\s\\S]*?\\*\\/|\\/\\/.*)|("[^"]*"|'[^']*')|\\b(${kw})\\b|(&lt;=|&gt;=|!=|==|&lt;|&gt;|&amp;&amp;|\\|\\||!)|(\\+\\+|--|\\+|-|\\*|\\/|%|\\^)|\\b\\d+(\\.\\d+)?\\b|\\b([a-zA-Z_][a-zA-Z0-9_]*)\\b`, 'g');
 
-    if (currentExt === 'c' || currentExt === 'cpp') {
-        regex = new RegExp(["(\\/\\*[\\s\\S]*?\\*\\/|\\/\\/.*)", "(\"[^\"]*\"|'[^']*')", "\\b(" + kw_c + ")\\b", "\\b\\d+(\\.\\d+)?\\b"].join('|'), 'g');
-    } else if (currentExt === 'php' || currentExt === 'html' || currentExt === 'js') {
-        regex = new RegExp(["(\\/\\*[\\s\\S]*?\\*\\/|\\/\\/.*|&lt;!--[\\s\\S]*?--&gt;)", "(\"[^\"]*\"|'[^']*'|`[^`]*`)", "(&lt;\\?php|&lt;\\?=|\\?&gt;)", "(&lt;\\/?[a-zA-Z0-9\\-]+|&gt;)", "(\\$[a-zA-Z_\\x7f-\\xff][a-zA-Z0-9_\\x7f-\\xff]*)", "\\b(" + kw_web + ")\\b", "\\b\\d+(\\.\\d+)?\\b"].join('|'), 'g');
-    } else {
-        regex = new RegExp(["(\\/\\*[\\s\\S]*?\\*\\/|\\/\\/.*)", "(\"[^\"]*\"|'[^']*')", "\\b(if|else|while|for|return)\\b", "\\b\\d+(\\.\\d+)?\\b"].join('|'), 'g');
-    }
-
-    return html.replace(regex, function(m) {
-        if (m.startsWith('/*') || m.startsWith('//') || m.startsWith('&lt;!--')) return '<span class="syntax-comment">' + m + '</span>';
-        if (m.startsWith('"') || m.startsWith("'") || m.startsWith('`')) return '<span class="syntax-string">' + m + '</span>';
-        if (m.startsWith('&lt;?') || m.startsWith('?&gt;')) return '<span class="syntax-keyword-alt">' + m + '</span>';
-        if (m.startsWith('&lt;') || m.startsWith('&gt;')) return '<span class="syntax-html">' + m + '</span>';
-        if (m.startsWith('$')) return '<span class="syntax-var">' + m + '</span>';
-        if (/^\d+(\.\d+)?$/.test(m)) return '<span class="syntax-number">' + m + '</span>';
-        return '<span class="syntax-keyword">' + m + '</span>';
+    return html.replace(regex, (m, p1, p2, p3, p4, p5, p6, p7) => {
+        if (p1) return `<span class="syntax-color3">${m}</span>`;
+        if (p2) return `<span class="syntax-string">${m}</span>`;
+        if (p3) return `<span class="syntax-color4">${m}</span>`;
+        if (p4) return `<span class="syntax-color6">${m}</span>`;
+        if (p5) return `<span class="syntax-color5">${m}</span>`;
+        if (p6) return `<span class="syntax-color1">${m}</span>`;
+        if (p7) return `<span class="syntax-color2">${m}</span>`;
+        return m;
     });
 }
 
-// ==========================================================================
-// EDITOR CORE
-// ==========================================================================
 function setFilename(filename) {
-    document.getElementById('current_filename').value = filename;
-    document.getElementById('file_indicator').textContent = 'Archivo: ' + filename;
+    DOM.currentFilename.value = filename;
+    DOM.fileIndicator.textContent = 'Archivo: ' + filename;
     setExtension(filename);
 }
 
 function setExtension(filename) {
     currentExt = filename.includes('.') ? filename.split('.').pop().toLowerCase() : 'txt';
-    document.getElementById('file_extension').value = currentExt;
+    DOM.fileExt.value = currentExt;
     procesarCambiosPesados();
 }
 
 function syncScroll() {
-    lineNumbers.scrollTop = editor.scrollTop;
-    highlighting.scrollTop = editor.scrollTop;
-    highlighting.scrollLeft = editor.scrollLeft;
+    DOM.lineNumbers.scrollTop = DOM.highlighting.scrollTop = DOM.editor.scrollTop;
+    DOM.highlighting.scrollLeft = DOM.editor.scrollLeft;
 }
-editor.addEventListener('scroll', syncScroll);
 
 function handleInput() {
-    const text = editor.value;
-    highlighting.innerHTML = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '\n';
-    
+    DOM.highlighting.innerHTML = applySyntaxHighlighting(DOM.editor.value) + '\n';
     actualizarContadorLineas();
     actualizarCursorRápido();
     syncScroll();
-
-    clearTimeout(typingTimer);
-    typingTimer = setTimeout(() => { 
-        highlighting.innerHTML = applySyntaxHighlighting(text) + '\n'; 
-    }, 150);
 }
 
 function actualizarContadorLineas() {
-    const lines = editor.value.split('\n').length;
+    const lines = DOM.editor.value.split('\n').length;
     if (lines !== currentLineCount) {
         currentLineCount = lines;
-        lineNumbers.textContent = Array.from({length: lines}, (_, i) => i + 1).join('\n');
+        DOM.lineNumbers.textContent = Array.from({length: lines}, (_, i) => i + 1).join('\n');
         synchronizeScrollbarOffset();
     }
 }
 
-function procesarCambiosPesados() {
-    currentLineCount = -1;
-    handleInput();
-}
+function procesarCambiosPesados() { currentLineCount = -1; handleInput(); }
 
 function actualizarCursorRápido() {
-    const pos = editor.selectionStart;
-    const lines = editor.value.substring(0, pos).split('\n');
-    cursorPos.textContent = 'Ln ' + lines.length + ', Col ' + (lines[lines.length - 1].length + 1);
+    const pos = DOM.editor.selectionStart;
+    const lines = DOM.editor.value.substring(0, pos).split('\n');
+    DOM.cursorPos.textContent = `Ln ${lines.length}, Col ${lines[lines.length - 1].length + 1}`;
 }
 
-function synchronizeScrollbarOffset() {
-    lineNumbers.style.paddingBottom = (10 + editor.offsetHeight - editor.clientHeight) + 'px';
-}
+function synchronizeScrollbarOffset() { DOM.lineNumbers.style.paddingBottom = `${10 + DOM.editor.offsetHeight - DOM.editor.clientHeight}px`; }
 
 function limpiarPaneles() {
-    ['lexico','sintactico','semantico','intermedio','simbolos','ejecucion'].forEach(id => {
-        const p = document.getElementById('panel_'+id);
-        if(p) p.textContent = "Esperando...";
-    });
-    ['lex','sin','sem'].forEach(id => {
-        const p = document.getElementById('panel_err_'+id);
-        if(p) p.textContent = "Sin errores.";
-    });
+    ['lexico','sintactico','semantico','intermedio','simbolos','ejecucion'].forEach(id => { const p = document.getElementById('panel_'+id); if(p) p.textContent = "Esperando..."; });
+    ['lex','sin','sem'].forEach(id => { const p = document.getElementById('panel_err_'+id); if(p) p.textContent = "Sin errores."; });
 }
 
-function encodeToB64(str) { return btoa(unescape(encodeURIComponent(str))); }
+function irALinea(linea) {
+    const lineas = DOM.editor.value.split('\n');
+    if (linea < 1 || linea > lineas.length) return;
+    
+    let pos = lineas.slice(0, linea - 1).reduce((acc, l) => acc + l.length + 1, 0);
+    DOM.editor.focus();
+    DOM.editor.setSelectionRange(pos, pos);
+    DOM.editor.scrollTop = (linea - 1) * 21 - (DOM.editor.clientHeight / 2) + 30;
+    
+    const prevShadow = DOM.editorContainer.style.boxShadow;
+    DOM.editorContainer.style.boxShadow = "inset 0 0 15px var(--accent-primary)";
+    setTimeout(() => DOM.editorContainer.style.boxShadow = prevShadow, 300);
+}
 
-function compilarFase(fase) {
-    document.getElementById('hidden_code').value = encodeToB64(editor.value);
-    document.getElementById('is_base64').value = '1';
-    let form = document.getElementById('formCompilar');
-    document.getElementById('temp_accion').value = fase;
-    form.submit();
+// ==========================================================================
+// COMPILADOR Y GENERACIÓN DE TABLAS (JSON)
+// ==========================================================================
+function getLexicalClass(tipo) {
+    if(tipo === 'EOF') return 'badge-default';
+    if(tipo.includes('ERR')) return 'badge-error';
+    switch(tipo) {
+        case 'RESERVADA': return 'badge-keyword';
+        case 'ID': return 'badge-id';
+        case 'NUM_REAL':
+        case 'NUM_ENTERO': return 'badge-number';
+        case 'CADENA':
+        case 'CARACTER': return 'badge-string';
+        case 'COM_MULTI':
+        case 'COM_SIMPLE': return 'badge-comment';
+        case 'OP_RELACIONAL':
+        case 'OP_LOGICO':
+        case 'OP_ARITMETICO':
+        case 'ASIGNACION': return 'badge-operator';
+        default: return 'badge-default';
+    }
+}
+
+async function compilarFase(fase) {
+    document.querySelectorAll('.right-content').forEach(el => el.classList.add('oculto'));
+    document.querySelectorAll('.right-panels .tab').forEach(el => el.classList.remove('active'));
+    
+    const panelActivo = document.getElementById('panel_' + fase);
+    const tabActivo = document.querySelector(`.right-panels .tab[onclick*="${fase}"]`);
+    
+    if (panelActivo) panelActivo.classList.remove('oculto');
+    if (tabActivo) tabActivo.classList.add('active');
+    if (panelActivo && !panelActivo.querySelector('.panel-header-sticky')) panelActivo.textContent = "Procesando...";
+
+    const formData = newSearchParams({ accion: fase, is_base64: '1', codigo_fuente: btoa(unescape(encodeURIComponent(DOM.editor.value))) });
+
+    try {
+        const resText = await (await fetch('index.php', { method: 'POST', body: formData })).text();
+        
+        if (fase === 'lexico') {
+            try {
+                const data = JSON.parse(resText);
+                
+                // RENDER DE LA TABLA LÉXICA
+                let tablaHTML = `
+                    <div class="panel-header-sticky">
+                        <div>
+                            <div class="panel-title-glow">=== TABLA DE TOKENS ===</div>
+                            <div style="font-size: 11px; color: var(--text-muted); margin-top:2px;">Haz clic en una fila para saltar al código</div>
+                        </div>
+                        <button class="btn-reload" onclick="compilarFase('lexico')" title="Refrescar">🔄 Recargar</button>
+                    </div>
+                    <div class="table-container">
+                        <table class="lexical-table">
+                            <thead>
+                                <tr><th>Línea</th><th>Col</th><th>Tipo</th><th>Lexema</th></tr>
+                            </thead>
+                            <tbody>
+                `;
+                
+                data.tokens.forEach(tok => {
+                    const cssClass = getLexicalClass(tok.tipo);
+                    const safeLexema = tok.lexema.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    tablaHTML += `
+                        <tr class="rgb-table-row" onclick="irALinea(${tok.linea})">
+                            <td>${tok.linea}</td>
+                            <td>${tok.col}</td>
+                            <td><span class="badge-tipo ${cssClass}">${tok.tipo}</span></td>
+                            <td class="lexema-cell">${safeLexema}</td>
+                        </tr>
+                    `;
+                });
+                
+                tablaHTML += `</tbody></table></div>`;
+                panelActivo.innerHTML = tablaHTML;
+
+                // RENDER DEL PANEL DE ERRORES LÉXICOS
+                const panelErrores = document.getElementById('panel_err_lex');
+                if (panelErrores) {
+                    if (data.errores.length === 0) {
+                        panelErrores.innerHTML = '<div class="success-log">✅ Análisis léxico completado sin errores.</div>';
+                    } else {
+                        panelErrores.innerHTML = data.errores.map(err => {
+                            const safeLex = err.lexema.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                            return `<div class="interactive-log-line error-log" onclick="irALinea(${err.linea})">Ln ${err.linea} Col ${err.col} | ${err.tipo} | ${err.msg}: <b>${safeLex}</b></div>`;
+                        }).join('');
+                        
+                        // Hacer visible el panel de errores si hubo fallos
+                        document.querySelectorAll('.bottom-panels .tab').forEach(el => el.classList.remove('active'));
+                        document.querySelectorAll('.bottom-content').forEach(el => el.classList.add('oculto'));
+                        panelErrores.classList.remove('oculto');
+                        document.querySelector(`.bottom-panels .tab[onclick*="err_lex"]`)?.classList.add('active');
+                    }
+                }
+            } catch (jsonErr) {
+                // Fallback si falla el parseo (por ejemplo si hay un warning de PHP atorado)
+                panelActivo.textContent = "Error al leer el JSON del analizador léxico:\n" + resText;
+            }
+        } else if (panelActivo) {
+            // Para las fases que aún devuelven texto plano
+            panelActivo.textContent = resText;
+        }
+    } catch (e) { 
+        if (panelActivo) panelActivo.textContent = "Fallo de conexión con el compilador."; 
+    }
+}
+
+// Función auxiliar necesaria
+function newSearchParams(obj) {
+    const params = new URLSearchParams();
+    for (const key in obj) { params.append(key, obj[key]); }
+    return params;
 }
 
 function showRightPanel(e, id) {
@@ -336,6 +371,7 @@ function showRightPanel(e, id) {
     document.querySelectorAll('.right-panels .tab').forEach(el => el.classList.remove('active'));
     document.getElementById('panel_' + id).classList.remove('oculto');
     e.target.classList.add('active');
+    if (id === 'lexico') compilarFase('lexico');
 }
 
 function showBottomPanel(e, id) {
@@ -345,126 +381,124 @@ function showBottomPanel(e, id) {
     e.target.classList.add('active');
 }
 
-function toggleRightPanel() {
-    document.getElementById('right_panels').classList.toggle('panel-hidden');
-    resizerV.classList.toggle('panel-hidden');
-}
-
-function toggleBottomPanel() {
-    document.getElementById('bottom_panels').classList.toggle('panel-hidden');
-    resizerH.classList.toggle('panel-hidden');
-}
-
 // ==========================================================================
-// NUEVO, CERRAR Y GUARDAR
+// ARCHIVOS
 // ==========================================================================
 async function nuevoArchivo() {
-    if (editor.value.trim() !== '') {
-        if (!await Modals.confirm('Nuevo', '¿Crear nuevo? Se perderá lo no guardado.', 'Crear', 'Cancelar')) return;
-    }
+    if (DOM.editor.value.trim() !== '' && !await Modals.confirm('Nuevo', '¿Crear nuevo? Se perderá lo no guardado.', 'Crear', 'Cancelar')) return;
     let nombre = await Modals.prompt("Nuevo Archivo", "Nombre del archivo:", "codigo." + currentExt);
     if (!nombre) return;
-    editor.value = '';
+    DOM.editor.value = '';
     setFilename(nombre);
-    const rutaBase = document.getElementById('workspace_path').value.trim();
-    currentOpenedFileAbsPath = rutaBase ? (rutaBase.replace(/\/$/, '') + '/' + nombre) : '';
-    limpiarPaneles();
-    procesarCambiosPesados();
+    currentOpenedFileAbsPath = DOM.workspacePath.value.trim() ? `${DOM.workspacePath.value.trim().replace(/\/$/, '')}/${nombre}` : '';
+    limpiarPaneles(); procesarCambiosPesados();
     await guardarEnServidor(nombre, false);
     cargarExplorador();
 }
 
 async function cerrarArchivo() {
-    if (editor.value.trim() !== '' && !await Modals.confirm('Cerrar', '¿Cerrar sin guardar?', 'Cerrar', 'Cancelar')) return;
-    editor.value = '';
+    if (DOM.editor.value.trim() !== '' && !await Modals.confirm('Cerrar', '¿Cerrar sin guardar?', 'Cerrar', 'Cancelar')) return;
+    DOM.editor.value = '';
     setFilename('Sin título');
     currentOpenedFileAbsPath = '';
-    limpiarPaneles();
-    procesarCambiosPesados();
+    limpiarPaneles(); procesarCambiosPesados();
 }
 
 async function guardarEnServidor(nombreArchivo, esGuardarComo = false) {
     if (saveInProgress) return;
     saveInProgress = true;
-    const formData = new URLSearchParams();
-    formData.append('accion', 'guardar_servidor');
-    formData.append('nombre_archivo', nombreArchivo);
-    formData.append('codigo_fuente', encodeToB64(editor.value));
-    formData.append('is_base64', '1');
-    if (currentOpenedFileAbsPath !== '' && !esGuardarComo) formData.append('ruta_absoluta', currentOpenedFileAbsPath);
+    const formData = new URLSearchParams({
+        accion: 'guardar_servidor', nombre_archivo: nombreArchivo, is_base64: '1',
+        codigo_fuente: btoa(unescape(encodeURIComponent(DOM.editor.value)))
+    });
+    if (currentOpenedFileAbsPath && !esGuardarComo) formData.append('ruta_absoluta', currentOpenedFileAbsPath);
 
     try {
-        const response = await fetch('index.php', { method: 'POST', body: formData });
-        const res = await response.text();
+        const res = await (await fetch('index.php', { method: 'POST', body: formData })).text();
         if (res.startsWith('SUCCESS')) {
-            mostrarNotificacionGuardado(esGuardarComo ? '🌐 Guardado como' : '✅ Guardado');
+            mostrarNotificacion(esGuardarComo ? '🌐 Guardado como' : '✅ Guardado');
             cargarExplorador();
-        }
-    } catch (e) { mostrarError("Fallo al guardar"); }
+        } else throw new Error(res);
+    } catch (e) { mostrarNotificacion("Fallo al guardar", true); }
     finally { saveInProgress = false; }
 }
 
 async function guardarArchivo() {
-    let name = document.getElementById('current_filename').value;
-    if (name === 'Sin título' || name === '') return guardarComoArchivo();
-    guardarEnServidor(name, false);
+    const name = DOM.currentFilename.value;
+    (name === 'Sin título' || !name) ? guardarComoArchivo() : guardarEnServidor(name, false);
 }
 
 async function guardarComoArchivo() {
-    let nombre = await Modals.prompt("Guardar Como", "Nombre:", document.getElementById('current_filename').value);
+    let nombre = await Modals.prompt("Guardar Como", "Nombre:", DOM.currentFilename.value);
     if (!nombre) return;
     setFilename(nombre);
-    const rutaBase = document.getElementById('workspace_path').value.trim();
-    currentOpenedFileAbsPath = rutaBase ? (rutaBase.replace(/\/$/, '') + '/' + nombre) : '';
+    currentOpenedFileAbsPath = DOM.workspacePath.value.trim() ? `${DOM.workspacePath.value.trim().replace(/\/$/, '')}/${nombre}` : '';
     guardarEnServidor(nombre, true);
 }
 
-async function abrirArchivo() {
+function abrirArchivo() {
     const input = document.createElement('input');
     input.type = 'file';
     input.onchange = e => {
         const file = e.target.files[0];
         setFilename(file.name);
         const reader = new FileReader();
+        reader.onload = re => { DOM.editor.value = re.target.result; currentOpenedFileAbsPath = ''; procesarCambiosPesados(); };
         reader.readAsText(file, 'UTF-8');
-        reader.onload = re => { 
-            editor.value = re.target.result; 
-            currentOpenedFileAbsPath = ''; 
-            procesarCambiosPesados(); 
-        }
     };
     input.click();
 }
 
-function mostrarNotificacionGuardado(msg) {
-    const s = document.getElementById('status_msg');
-    s.textContent = msg + ' - ' + new Date().toLocaleTimeString();
-    s.style.fontWeight = "bold";
-    setTimeout(() => { s.style.fontWeight = "normal"; s.textContent = "Sistema listo."; }, 3000);
+async function borrarArchivo(event, rutaAbsoluta, nombre) {
+    if (event) event.stopPropagation();
+    if (!await Modals.confirm('Eliminar Archivo', `¿Eliminar permanentemente <b>${nombre}</b>?<br><br>No se puede deshacer.`, 'Eliminar', 'Cancelar')) return;
+
+    try {
+        const res = await (await fetch('index.php', { method: 'POST', body: new URLSearchParams({ accion: 'borrar_archivo', ruta_absoluta: rutaAbsoluta }) })).text();
+        if (res.startsWith('SUCCESS')) {
+            mostrarNotificacion('🗑️ Archivo eliminado');
+            if (currentOpenedFileAbsPath === rutaAbsoluta) {
+                DOM.editor.value = ''; setFilename('Sin título'); currentOpenedFileAbsPath = '';
+                limpiarPaneles(); procesarCambiosPesados();
+            }
+            cargarExplorador();
+        } else throw new Error();
+    } catch (e) { mostrarNotificacion("Error al eliminar", true); }
 }
 
-function mostrarError(msg) {
-    const s = document.getElementById('status_msg');
-    s.textContent = '❌ ' + msg;
-    s.style.color = "#f92672";
-    setTimeout(() => { s.style.color = "var(--text-primary)"; s.textContent = "Sistema listo."; }, 4000);
+// ==========================================================================
+// UTILS
+// ==========================================================================
+function mostrarNotificacion(msg, esError = false) {
+    DOM.statusMsg.textContent = `${esError ? '❌' : ''} ${msg} - ${new Date().toLocaleTimeString()}`;
+    DOM.statusMsg.style.color = esError ? "#f92672" : "var(--text-primary)";
+    DOM.statusMsg.style.fontWeight = esError ? "normal" : "bold";
+    setTimeout(() => { DOM.statusMsg.style.fontWeight = "normal"; DOM.statusMsg.style.color = "var(--text-primary)"; DOM.statusMsg.textContent = "Sistema listo."; }, 3000);
 }
 
 function verLogErrores() { fetch('index.php?accion=ver_log').then(r => r.text()).then(l => Modals.alert("LOG", l)); }
 function salirIDE() { window.location.href = "about:blank"; }
+
 function toggleTheme() {
+    document.body.classList.remove('rgb-theme');
     document.body.classList.toggle('light-theme');
     localStorage.setItem('ide_theme', document.body.classList.contains('light-theme') ? 'light' : 'dark');
 }
 
-function abrirAutomata() {
-    // Lo abrimos en pestaña nueva para que puedas hacer F11 y tomar la foto limpia.
-    window.open('compilador/automata.php', '_blank', 'width=1100,height=800');
+function toggleRGB() {
+    document.body.classList.remove('light-theme');
+    document.body.classList.toggle('rgb-theme');
+    localStorage.setItem('ide_theme', document.body.classList.contains('rgb-theme') ? 'rgb' : 'dark');
 }
 
+function abrirAutomata() { window.open('compilador/automata.php', '_blank', 'width=1100,height=800'); }
+
 document.addEventListener('DOMContentLoaded', () => {
-    if (localStorage.getItem('ide_theme') === 'light') document.body.classList.add('light-theme');
-    setFilename(document.getElementById('current_filename').value);
+    const theme = localStorage.getItem('ide_theme');
+    if (theme === 'light') document.body.classList.add('light-theme');
+    else if (theme === 'rgb') document.body.classList.add('rgb-theme');
+    
+    setFilename(DOM.currentFilename.value);
     procesarCambiosPesados();
     cargarExplorador();
 });

@@ -1,28 +1,26 @@
 <?php
 // ==========================================================================
-// IDE INDÓMITO - PROCESAMIENTO BACKEND (CON EXPLORADOR DE ARCHIVOS)
+// IDE INDÓMITO - PROCESAMIENTO BACKEND
 // ==========================================================================
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
 ini_set('log_errors', 1);
 ini_set('error_log', __DIR__ . '/error_log.txt');
 
-$accion = $_POST['accion'] ?? $_GET['accion'] ?? '';
+$accion = $_REQUEST['accion'] ?? '';
 
-function logError($mensaje) {
+function logError(string $mensaje): void {
     $archivo = __DIR__ . '/error_log.txt';
     $fecha = date('Y-m-d H:i:s');
-    $log = "[$fecha] $mensaje\n";
-    file_put_contents($archivo, $log, FILE_APPEND);
+    file_put_contents($archivo, "[$fecha] $mensaje\n", FILE_APPEND);
 }
 
 // ==========================================================================
-// EXPLORAR DIRECTORIO (EL "PLUGIN" DE WORDPRESS)
+// EXPLORAR DIRECTORIO
 // ==========================================================================
 if ($accion === 'explorar_directorio') {
     header('Content-Type: application/json; charset=utf-8');
-    $rutaBase = $_POST['ruta'] ?? __DIR__;
-    $rutaBase = realpath($rutaBase);
+    $rutaBase = realpath($_POST['ruta'] ?? __DIR__);
 
     if (!$rutaBase || !is_dir($rutaBase)) {
         echo json_encode(['success' => false, 'error' => 'Ruta inválida o sin permisos de lectura.']);
@@ -30,18 +28,16 @@ if ($accion === 'explorar_directorio') {
     }
 
     $elementos = [];
-    $lista = scandir($rutaBase);
-    foreach ($lista as $item) {
+    $extensionesValidas = ['txt', 'c', 'cpp', 'php', 'js', 'html', 'css', 'json', 'md'];
+
+    foreach (scandir($rutaBase) as $item) {
         if ($item === '.' || $item === '..') continue;
         
         $rutaCompleta = $rutaBase . DIRECTORY_SEPARATOR . $item;
         $esDirectorio = is_dir($rutaCompleta);
         
-        // Si no es directorio, validamos la extensión para no cargar binarios pesados
-        if (!$esDirectorio) {
-            $ext = strtolower(pathinfo($item, PATHINFO_EXTENSION));
-            $extensionesValidas = ['txt', 'c', 'cpp', 'php', 'js', 'html', 'css', 'json', 'md'];
-            if (!in_array($ext, $extensionesValidas)) continue;
+        if (!$esDirectorio && !in_array(strtolower(pathinfo($item, PATHINFO_EXTENSION)), $extensionesValidas)) {
+            continue;
         }
 
         $elementos[] = [
@@ -51,19 +47,12 @@ if ($accion === 'explorar_directorio') {
         ];
     }
 
-    // Ordenar: Carpetas primero, luego archivos, ambos alfabéticamente
-    usort($elementos, function($a, $b) {
-        if ($a['es_directorio'] == $b['es_directorio']) {
-            return strcasecmp($a['nombre'], $b['nombre']);
-        }
-        return $a['es_directorio'] ? -1 : 1;
-    });
+    usort($elementos, fn($a, $b) => $a['es_directorio'] === $b['es_directorio'] 
+        ? strcasecmp($a['nombre'], $b['nombre']) 
+        : ($a['es_directorio'] ? -1 : 1)
+    );
 
-    echo json_encode([
-        'success' => true,
-        'ruta_actual' => $rutaBase,
-        'elementos' => $elementos
-    ]);
+    echo json_encode(['success' => true, 'ruta_actual' => $rutaBase, 'elementos' => $elementos]);
     exit;
 }
 
@@ -73,37 +62,49 @@ if ($accion === 'explorar_directorio') {
 if ($accion === 'guardar_servidor') {
     header('Content-Type: text/plain; charset=utf-8');
     
-    $nombreArchivo = $_POST['nombre_archivo'] ?? 'sin_nombre.txt';
+    $nombreArchivo = basename($_POST['nombre_archivo'] ?? 'sin_nombre.txt');
     $rutaAbsoluta = trim($_POST['ruta_absoluta'] ?? '');
     $codigoFuente = $_POST['codigo_fuente'] ?? '';
-    $isBase64 = $_POST['is_base64'] ?? '0';
     
-    if ($isBase64 === '1') {
+    if (($_POST['is_base64'] ?? '0') === '1') {
         $codigoFuente = base64_decode($codigoFuente);
     }
     
-    // Si viene una ruta absoluta del explorador, escribimos ahí. Si no, en la raíz.
-    if (!empty($rutaAbsoluta)) {
-        $rutaArchivo = $rutaAbsoluta;
-    } else {
-        $nombreArchivo = basename($nombreArchivo);
-        if (empty($nombreArchivo)) $nombreArchivo = 'archivo_' . time() . '.txt';
-        $rutaArchivo = __DIR__ . DIRECTORY_SEPARATOR . $nombreArchivo;
-    }
+    $rutaArchivo = $rutaAbsoluta ?: __DIR__ . DIRECTORY_SEPARATOR . ($nombreArchivo ?: 'archivo_' . time() . '.txt');
     
     $existeArchivo = file_exists($rutaArchivo);
     $bytes = file_put_contents($rutaArchivo, $codigoFuente);
     
     if ($bytes !== false) {
-        $tamañoReal = filesize($rutaArchivo);
         $estado = $existeArchivo ? 'SOBRESCRITO' : 'CREADO';
-        logError("GUARDADO $estado: $rutaArchivo ($tamañoReal bytes)");
-        echo "SUCCESS|Archivo $estado: " . basename($rutaArchivo) . "|" . $tamañoReal . " bytes";
+        logError("GUARDADO $estado: $rutaArchivo ($bytes bytes)");
+        echo "SUCCESS|Archivo $estado: " . basename($rutaArchivo) . "|$bytes bytes";
     } else {
-        $error = error_get_last();
-        logError("ERROR GUARDANDO EN $rutaArchivo : " . json_encode($error));
+        logError("ERROR GUARDANDO EN $rutaArchivo : " . json_encode(error_get_last()));
         http_response_code(500);
         echo "ERROR|No se pudo guardar. Revisa los permisos.";
+    }
+    exit;
+}
+
+// ==========================================================================
+// BORRAR ARCHIVO FÍSICO
+// ==========================================================================
+if ($accion === 'borrar_archivo') {
+    header('Content-Type: text/plain; charset=utf-8');
+    $rutaAbsoluta = trim($_POST['ruta_absoluta'] ?? '');
+    
+    if (!$rutaAbsoluta || !is_file($rutaAbsoluta)) {
+        echo "ERROR|Archivo no válido o es un directorio.";
+        exit;
+    }
+    
+    if (unlink($rutaAbsoluta)) {
+        logError("BORRADO: $rutaAbsoluta");
+        echo "SUCCESS|Archivo eliminado";
+    } else {
+        http_response_code(500);
+        echo "ERROR|Fallo al eliminar por permisos en el sistema.";
     }
     exit;
 }
@@ -114,16 +115,12 @@ if ($accion === 'guardar_servidor') {
 if ($accion === 'cargar_archivo') {
     header('Content-Type: application/json; charset=utf-8');
     
-    $rutaArchivo = $_GET['ruta_absoluta'] ?? '';
-    if (empty($rutaArchivo)) {
-        $rutaArchivo = __DIR__ . DIRECTORY_SEPARATOR . basename($_GET['archivo'] ?? '');
-    }
+    $rutaArchivo = $_GET['ruta_absoluta'] ?? (__DIR__ . DIRECTORY_SEPARATOR . basename($_GET['archivo'] ?? ''));
     
-    if (file_exists($rutaArchivo) && is_file($rutaArchivo)) {
-        $contenido = file_get_contents($rutaArchivo);
+    if (is_file($rutaArchivo)) {
         echo json_encode([
             'success' => true,
-            'contenido' => base64_encode($contenido),
+            'contenido' => base64_encode(file_get_contents($rutaArchivo)),
             'nombre' => basename($rutaArchivo),
             'ruta_absoluta' => $rutaArchivo
         ]);
@@ -140,11 +137,7 @@ if ($accion === 'cargar_archivo') {
 if ($accion === 'ver_log') {
     header('Content-Type: text/plain; charset=utf-8');
     $logFile = __DIR__ . '/error_log.txt';
-    if (file_exists($logFile)) {
-        echo file_get_contents($logFile);
-    } else {
-        echo "Log limpio. No hay errores registrados.";
-    }
+    echo file_exists($logFile) ? file_get_contents($logFile) : "Log limpio. No hay errores registrados.";
     exit;
 }
 
@@ -152,29 +145,27 @@ if ($accion === 'ver_log') {
 // ENRUTAMIENTO DE COMPILACIÓN
 // ==========================================================================
 if (in_array($accion, ['lexico', 'sintactico', 'semantico', 'intermedio', 'simbolos', 'ejecucion'])) {
-    $codigoFuente = $_POST['codigo_fuente'] ?? '';
-    if (($_POST['is_base64'] ?? '0') === '1') {
-        $codigoFuente = base64_decode($codigoFuente);
-    }
-    file_put_contents(__DIR__ . '/_temp_code.tmp', $codigoFuente);
+    $codigoFuente = ($_POST['is_base64'] ?? '0') === '1' ? base64_decode($_POST['codigo_fuente'] ?? '') : ($_POST['codigo_fuente'] ?? '');
     
-    $moduloMap = [
+    $tempFile = __DIR__ . '/_temp_code.tmp';
+    file_put_contents($tempFile, $codigoFuente);
+    
+    $modulo = match ($accion) {
         'lexico' => 'compilador/lexico.php',
         'sintactico' => 'compilador/sintactico.php',
         'semantico' => 'compilador/semantico.php',
         'intermedio' => 'compilador/intermedio.php',
         'simbolos' => 'compilador/simbolos.php',
-        'ejecucion' => 'compilador/ejecucion.php'
-    ];
+        'ejecucion' => 'compilador/ejecucion.php',
+    };
     
-    if (file_exists($moduloMap[$accion])) {
-        include $moduloMap[$accion];
+    if (file_exists($modulo)) {
+        echo shell_exec("php " . escapeshellarg($modulo) . " " . escapeshellarg($tempFile) . " 2>&1");
     } else {
-        echo "Error: Módulo del compilador no encontrado en la ruta correspondiente.";
+        echo "Error: Módulo del compilador '$modulo' no encontrado.";
     }
     exit;
 }
 
-// Carga la interfaz
 include 'vistas/vista.php';
 ?>

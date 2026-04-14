@@ -7,12 +7,6 @@
     <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-    <form id="formCompilar" method="POST" action="index.php" style="display:none;">
-        <input type="hidden" name="codigo_fuente" id="hidden_code" value="">
-        <input type="hidden" name="is_base64" id="is_base64" value="0">
-        <input type="hidden" name="accion" id="temp_accion" value="">
-    </form>
-
     <div class="menubar">
         <div class="menu-left">
             <div class="dropdown">
@@ -49,7 +43,9 @@
                     <button onclick="toggleExplorer()">🗂️ Alternar Explorador</button>
                     <button onclick="toggleRightPanel()">🗂️ Panel Compilador</button>
                     <button onclick="toggleBottomPanel()">🗄️ Panel Inferior</button>
+                    <div class="separator"></div>
                     <button onclick="toggleTheme()">🌓 Tema Claro/Oscuro</button>
+                    <button onclick="toggleRGB()">🌈 Tema RGB (Glow)</button>
                     <div class="separator"></div>
                     <button onclick="abrirAutomata()">🕸️ Ver Autómata Léxico</button>
                 </div>
@@ -61,7 +57,7 @@
             <button class="menu-btn" onclick="guardarArchivo()" title="Guardar">💾</button>
             <button class="menu-btn" onclick="toggleTheme()" title="Tema">🌓</button>
             <button class="menu-btn btn-ejecutar" onclick="compilarFase('ejecucion')">▶</button>
-            <select id="file_extension" onchange="setExtension(document.getElementById('current_filename').value + '.' + this.value)" style="padding: 6px; border-radius: 4px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color);">
+            <select id="file_extension" class="extension-selector" onchange="setExtension(DOM.currentFilename.value + '.' + this.value)">
                 <option value="txt">TXT</option>
                 <option value="c">C</option>
                 <option value="cpp">CPP</option>
@@ -75,7 +71,6 @@
 
     <div class="main-layout">
         <div class="top-layout">
-            
             <div class="file-explorer" id="file_explorer">
                 <div class="explorer-header">Proyecto</div>
                 <div class="explorer-path-bar">
@@ -83,9 +78,7 @@
                     <input type="text" id="workspace_path" placeholder="Ruta..." onkeypress="if(event.key === 'Enter') cargarExplorador()">
                     <button class="go-btn" onclick="cargarExplorador()">Ir</button>
                 </div>
-                <div class="explorer-content" id="explorer_content">
-                    Cargando archivos...
-                </div>
+                <div class="explorer-content" id="explorer_content">Cargando archivos...</div>
             </div>
             
             <div class="resizer-vertical" id="resizer_explorer"></div>
