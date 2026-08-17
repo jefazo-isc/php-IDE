@@ -1,0 +1,8 @@
+.env
+_temp_code.tmp
+error_log.txt
+.cursor/
+*.zip
+*.pdf
+wasm-compiler/target/
+workspace/

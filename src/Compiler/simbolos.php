@@ -69,32 +69,19 @@ function registrarSimbolo(&$tabla, $identificador, $tipo, $linea) {
 }
 
 // ==========================================================================
-// RENDERIZADO DE TABLA ASCII (Diseño Hacker/Terminal)
+// RENDERIZADO DE TABLA (JSON para Web UI)
 // ==========================================================================
-echo "╔══════════════════════════════╦════════════════════════╦══════════════════════════╗\n";
-echo "║ IDENTIFICADOR                ║ TIPO / CONTEXTO        ║ LÍNEAS DE APARICIÓN      ║\n";
-echo "╠══════════════════════════════╬════════════════════════╬══════════════════════════╣\n";
-
-if (empty($simbolos)) {
-    echo "║ " . str_pad("No se detectaron símbolos en el código fuente.", 80) . " ║\n";
-} else {
+$output = [];
+if (!empty($simbolos)) {
     ksort($simbolos); // Ordenamos alfabéticamente
     foreach ($simbolos as $id => $datos) {
-        // Unimos el array de líneas en un string separado por comas
-        $lineas_str = implode(", ", $datos['lineas']);
-        
-        // Recortamos por si los nombres son inmensamente largos (evita romper la tabla)
-        $id_recortado = mb_substr($id, 0, 28);
-        $tipo_recortado = mb_substr($datos['tipo'], 0, 22);
-        $lineas_recortado = mb_substr($lineas_str, 0, 24);
-        
-        // Pad para rellenar los espacios exactos de la columna
-        $id_pad = str_pad($id_recortado, 28);
-        $tipo_pad = str_pad($tipo_recortado, 22);
-        $lineas_pad = str_pad($lineas_recortado, 24);
-        
-        echo "║ $id_pad ║ $tipo_pad ║ $lineas_pad ║\n";
+        $output[] = [
+            'identificador' => $id,
+            'tipo' => $datos['tipo'],
+            'lineas' => implode(', ', $datos['lineas'])
+        ];
     }
 }
-echo "╚══════════════════════════════╩════════════════════════╩══════════════════════════╝\n";
+header('Content-Type: application/json');
+echo json_encode(['simbolos' => $output]);
 ?>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IDE Indómito - Compiladores</title>
+    <title>IDE Indómito - Compiladores (WebAssembly & Client-Side Edition)</title>
     <link rel="stylesheet" href="assets/css/style.css">
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="assets/js/lucide.min.js"></script>
@@ -19,10 +19,10 @@
                     <button onclick="cerrarArchivo()"><i data-lucide="x-circle"></i> Cerrar Archivo</button>
                     <div class="separator"></div>
                     <button onclick="guardarArchivo()"><i data-lucide="save"></i> Guardar</button>
-                    <button onclick="guardarComoArchivo()"><i data-lucide="save"></i> Guardar como</button>
+                    <button onclick="guardarComoArchivo()"><i data-lucide="download"></i> Guardar como (Descargar)</button>
                     <button onclick="verLogErrores()"><i data-lucide="scroll-text"></i> Log</button>
                     <div class="separator"></div>
-                    <button onclick="salirIDE()"><i data-lucide="log-out"></i> Salir</button>
+                    <button onclick="salirIDE()"><i data-lucide="log-out"></i> Reiniciar Workspace</button>
                 </div>
             </div>
             
@@ -50,6 +50,7 @@
                     <button onclick="toggleRGB()"><i data-lucide="palette"></i> Tema RGB (Glow)</button>
                     <div class="separator"></div>
                     <button onclick="toggleAIPanel()"><i data-lucide="bot"></i> Alternar Panel de IA</button>
+                    <button onclick="configurarLlavesIA()"><i data-lucide="key"></i> Configurar Llaves IA</button>
                     <button onclick="abrirAutomata()"><i data-lucide="network"></i> Ver Autómata Léxico</button>
                 </div>
             </div>
@@ -60,13 +61,14 @@
             <button class="menu-btn" onclick="guardarArchivo()" title="Guardar"><i data-lucide="save"></i></button>
             <button class="menu-btn" onclick="toggleTheme()" title="Tema"><i data-lucide="moon"></i></button>
             <button class="menu-btn" onclick="toggleRightPanel()" title="Alternar Panel de Compilador"><i data-lucide="panel-right"></i></button>
+            <button class="menu-btn" onclick="configurarLlavesIA()" title="Configurar API Keys"><i data-lucide="key"></i></button>
             <button class="menu-btn btn-ejecutar" onclick="compilarFase('ejecucion')" title="Ejecutar"><i data-lucide="play"></i></button>
         </div>
     </div>
 
     <div class="main-layout" style="flex-direction: row;">
         <div class="file-explorer" id="file_explorer">
-            <div class="explorer-header">Proyecto</div>
+            <div class="explorer-header">Proyecto (Virtual Workspace)</div>
             <div class="explorer-path-bar">
                 <button class="up-btn" onclick="subirDirectorio()" title="Subir nivel"><i data-lucide="arrow-up"></i></button>
                 <input type="text" id="workspace_path" placeholder="Ruta..." onkeypress="if(event.key === 'Enter') cargarExplorador()">
@@ -94,13 +96,74 @@
                             <span id="file_indicator">Archivo: Sin título</span>
                         </div>
                         <div class="status-info">
-                            <span id="status_msg">Sistema listo.</span>
+                            <span id="status_msg">⚡ Motor WebAssembly & Client-Side Activo</span>
                         </div>
                     </div>
                 </div>
 
                 <div class="resizer-vertical oculto" id="resizer_ai"></div>
-                <?php include 'componentes/panel_ia.php'; ?>
+                
+                <!-- Panel de Asistente de IA Integrado -->
+                <div class="ai-panel oculto" id="ai_panel">
+                    <div class="ai-panel-header">
+                        <div class="ai-header-title">
+                            <span><i data-lucide="bot"></i> Asistente de IA</span>
+                        </div>
+                        <div class="ai-header-controls">
+                            <select id="ai_provider_selector" class="ai-select" onchange="cambiarProveedorIA(this.value)">
+                                <option value="gemini" selected>Google Gemini 1.5 Flash</option>
+                                <option value="gemini-2.0-flash">Google Gemini 2.0 Flash</option>
+                                <option value="gemini-1.5-pro">Google Gemini 1.5 Pro</option>
+                                <option value="mercury">Mercury 2</option>
+                                <option value="grok">xAI Grok 2</option>
+                            </select>
+                            <button class="menu-btn" onclick="configurarLlavesIA()" title="Configurar API Key" style="padding: 4px 6px; font-size: 11px;"><i data-lucide="key" style="width:13px; height:13px;"></i></button>
+                            <button class="ai-close-btn" onclick="toggleAIPanel()" title="Cerrar Panel"><i data-lucide="x"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- Acciones Rápidas -->
+                    <div class="ai-quick-actions">
+                        <button class="ai-action-btn" onclick="ejecutarAccionIA('explicar')" title="Explicar el código seleccionado o completo">
+                            <i data-lucide="lightbulb"></i> Explicar
+                        </button>
+                        <button class="ai-action-btn" onclick="ejecutarAccionIA('corregir')" title="Analizar y corregir errores">
+                            <i data-lucide="check-circle"></i> Corregir
+                        </button>
+                        <button class="ai-action-btn" onclick="insertarEnEditor()" title="Insertar en editor de código">
+                            <i data-lucide="code"></i> Insertar
+                        </button>
+                        <button class="ai-action-btn" onclick="ejecutarAccionIA('optimizar')" title="Optimizar rendimiento/legibilidad">
+                            <i data-lucide="zap"></i> Optimizar
+                        </button>
+                    </div>
+
+                    <!-- Área de Chat -->
+                    <div class="ai-chat-body" id="ai_chat_body">
+                        <div class="ai-message ai-message-assistant">
+                            <div class="ai-message-avatar"><i data-lucide="bot"></i></div>
+                            <div class="ai-message-content">
+                                ¡Hola! Soy tu asistente de IA integrado. Puedo ayudarte a explicar código, resolver errores de sintaxis o sugerir optimizaciones.
+                                <br><br>
+                                Haz clic en el icono de llave <strong><i data-lucide="key" style="width:12px; height:12px; display:inline-block; vertical-align:-1px;"></i></strong> para configurar tu API Key de Gemini o escribe una consulta abajo.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Cargando / Estado -->
+                    <div class="ai-status oculto" id="ai_status">
+                        <div class="ai-spinner"></div>
+                        <span id="ai_status_text">Generando respuesta...</span>
+                    </div>
+
+                    <!-- Input de Chat -->
+                    <div class="ai-input-area">
+                        <textarea id="ai_chat_input" placeholder="Pregúntame algo sobre tu código... (Ctrl+Enter para enviar)" onkeydown="if(event.key === 'Enter' && event.ctrlKey) enviarMensajeIA()"></textarea>
+                        <button class="ai-send-btn" onclick="enviarMensajeIA()" title="Enviar mensaje">
+                            <i data-lucide="send"></i>
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <div class="resizer-horizontal" id="resizer_h"></div>
@@ -137,7 +200,22 @@
         </div>
     </div>
 
-    <input type="hidden" id="current_filename" value="Sin título">
+    <input type="hidden" id="current_filename" value="/testLexico.txt">
+
+    <!-- Módulos del Compilador Client-side -->
+    <script src="assets/js/compiler/lexer.js"></script>
+    <script src="assets/js/compiler/parser.js"></script>
+    <script src="assets/js/compiler/semantic.js"></script>
+    <script src="assets/js/compiler/symbols.js"></script>
+    <script src="assets/js/compiler/intermediate.js"></script>
+    <script src="assets/js/compiler/vm.js"></script>
+    <script src="assets/js/compiler/engine.js"></script>
+    
+    <!-- Sistema de Archivos e IA -->
+    <script src="assets/js/fs/virtual_fs.js"></script>
+    <script src="assets/js/ai/ai_client.js"></script>
+    
+    <!-- Lógica Principal del Editor y UI -->
     <script src="assets/js/main.js"></script>
     <script src="assets/js/ai.js"></script>
 </body>
