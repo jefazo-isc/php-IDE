@@ -922,6 +922,21 @@ async function salirIDE() {
     }
 }
 
+async function cerrarVentana() {
+    if (await Modals.confirm("Salir del IDE", "¿Estás seguro que deseas salir y cerrar el entorno?")) {
+        // Intenta cerrar la pestaña
+        window.close();
+        
+        // Si el navegador bloquea el cierre, muestra una pantalla negra de "Cerrado"
+        document.body.innerHTML = `
+            <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; height:100vh; background-color:var(--bg-primary, #1e1e1e); color:var(--text-primary, #ffffff); font-family:sans-serif;">
+                <h1 style="font-size: 40px; margin-bottom: 10px;">IDE Cerrado</h1>
+                <p style="font-size: 18px; opacity: 0.7;">El entorno ha finalizado. Ya puedes cerrar esta pestaña con seguridad.</p>
+            </div>
+        `;
+    }
+}
+
 function toggleTheme() {
     document.body.classList.remove('rgb-theme');
     document.body.classList.toggle('light-theme');
