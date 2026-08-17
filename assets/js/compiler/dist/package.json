@@ -1,0 +1,16 @@
+{
+  "name": "ide-indomito-compiler",
+  "type": "module",
+  "description": "WebAssembly compiler for IDE Indómito",
+  "version": "0.1.0",
+  "files": [
+    "ide_indomito_compiler_bg.wasm",
+    "ide_indomito_compiler.js",
+    "ide_indomito_compiler.d.ts"
+  ],
+  "main": "ide_indomito_compiler.js",
+  "types": "ide_indomito_compiler.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
