@@ -698,6 +698,11 @@ async function compilarFase(fase) {
         } else if (panelActivo) {
             panelActivo.textContent = res;
         }
+
+        if (fase === 'ejecucion' || fase === 'sintactico') {
+            playNotificationSound();
+        }
+
         setTimeout(() => { if (window.lucide) lucide.createIcons(); }, 10);
     } catch (e) { 
         console.error("Error en compilación:", e);
@@ -935,6 +940,39 @@ async function cerrarVentana() {
             </div>
         `;
     }
+}
+
+// Sonido de notificación de actividad terminada
+function playNotificationSound() {
+    try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.type = 'triangle';
+        
+        // Melodía alegre (arpegio de éxito)
+        osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
+        osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.1); // E5
+        osc.frequency.setValueAtTime(783.99, audioCtx.currentTime + 0.2); // G5
+        osc.frequency.setValueAtTime(1046.50, audioCtx.currentTime + 0.3); // C6
+        
+        gain.gain.setValueAtTime(0, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + 0.05);
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime + 0.4);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.7);
+        
+        osc.start(audioCtx.currentTime);
+        osc.stop(audioCtx.currentTime + 0.7);
+    } catch (e) {
+        console.log("Audio API no soportada en este navegador.");
+    }
+}
+
+async function finalizarActividad() {
+    playNotificationSound();
+    await Modals.alert("¡Actividad Terminada!", "La actividad se ha completado exitosamente. Se ha reproducido el sonido de notificación.");
 }
 
 function toggleTheme() {
