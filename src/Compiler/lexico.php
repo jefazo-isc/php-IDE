@@ -17,17 +17,18 @@ $longitud = strlen($codigo);
 
 // Se agregó \s* dentro de los operadores de múltiples caracteres para permitir que 
 // se unan aunque estén separados por espacios o saltos de línea múltiples.
+// NOTA: Se movió OP_LOGICO arriba de ID para evitar que palabras como 'and' sean tragadas por el identificador.
 $patrones = [
     'COM_MULTI'     => '/^\/\*[\s\S]*?\*\//u',
     'COM_SIMPLE'    => '/^\/\/[^\n]*/u',
     'RESERVADA'     => '/^(if|else|end|do|while|switch|case|int|float|bool|main|cin|cout|real|then|until)\b/u',
+    'OP_LOGICO'     => '/^(&\s*&|\|\s*\||!|and\b|or\b|not\b)/u',
     'ID'            => '/^[a-zA-Z_][a-zA-Z0-9_]*/u',
     'NUM_REAL'      => '/^[0-9]+\.[0-9]+/u',
     'ERR_NUM'       => '/^[0-9]+\.(?![0-9])/u',
     'NUM_ENTERO'    => '/^[0-9]+/u',
     'OP_RELACIONAL' => '/^(<\s*<|>\s*>|<\s*=|>\s*=|!\s*=|=\s*=|<|>)/u',
-    'OP_LOGICO'     => '/^(&\s*&|\|\s*\||!)/u',
-    'OP_ARITMETICO' => '/^(\+[ \t]*\+|-[ \t]*-|\+|-|\*|\/|%|\^)/u',
+    'OP_ARITMETICO' => '/^(\+\s*\+|-\s*-|\+|-|\*|\/|%|\^)/u',
     'ASIGNACION'    => '/^=/u',
     'CADENA'        => '/^"[^"]*"/u',
     'CARACTER'      => '/^\'[^\']*\'/u',
